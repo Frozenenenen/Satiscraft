@@ -587,7 +587,7 @@ function vb(g,c,w,h,d,x,y,z,e){const me=new THREE.Mesh(BOX,new THREE.MeshLambert
 function buildViewModel(key){vmPivot.clear();const sleeve=net.role==='solo'?PCOL[0]:PCOL[net.id];
  vb(vmPivot,sleeve,.17,.17,.5,0,0,-.22);vb(vmPivot,0x33373c,.18,.05,.18,0,0,-.47);vb(vmPivot,0xe0b48c,.15,.15,.16,0,0,-.57);
  const hold=new THREE.Group();hold.position.set(0,.03,-.6);vmPivot.add(hold);
- if(buildType){hold.position.set(-.08,.16,-.6);hold.rotation.set(-.7,.35,.1);vb(hold,0x23272c,.32,.022,.24,0,.06,-.02);vb(hold,0x3d78c2,.27,.006,.19,0,.075,-.02,1);
+ if(buildType){hold.position.set(-.1,.14,-.6);hold.rotation.set(1.05,.3,-.1);vb(hold,0x23272c,.32,.022,.24,0,.06,-.02);vb(hold,0x3d78c2,.27,.006,.19,0,.075,-.02,1);
   vb(hold,0xf29a2e,.12,.008,.04,-.05,.08,-.06,1);vb(hold,0xf29a2e,.04,.008,.08,.06,.08,.02,1)}
  else if(tier>0){hold.rotation.set(-.55,0,-.42);hold.scale.setScalar(.72);vb(hold,0x7a5232,.045,.62,.045,0,.16,0);const hc=TOOLCOL[tier];
   vb(hold,hc,.46,.075,.075,0,.45,0);const l=vb(hold,hc,.16,.06,.06,-.27,.41,0);l.rotation.z=.45;const r=vb(hold,hc,.16,.06,.06,.27,.41,0);r.rotation.z=-.45;
