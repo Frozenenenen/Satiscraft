@@ -28,6 +28,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Miner:** Setz ihn auf ein Erzvorkommen. Jeder Erzblock darunter enthält 40 Einheiten. Der Miner baut den Bereich Schicht für Schicht ab.
 - **Gebäude:** Sie brauchen eine ebene, freigeräumte Fläche, je nach Gebäude 1×1, 2×2, 2×3 oder 3×3.
 - **Anschlüsse:** Grüne Pfeile sind Eingänge, orange Pfeile sind Ausgänge.
+- **Bänder kreuzen:** Die Förderbandbrücke ist 3 Felder lang und überspannt 1 Feld, die lange Brücke ist 5 lang und überspannt 3. Unter dem Bogen kann ein anderes Band durchlaufen. Alternativ baust du die Brücke selbst aus Blöcken: Bänder steigen und fallen pro Feld um einen Block und werden dabei als Rampe dargestellt.
 - **Lager:** Die Lagerkiste (1×1, 999 Items) nimmt aus jeder Richtung an. Der Lagercontainer (2×2, 1.500 Items, 4 Eingänge) und das Industrielager (3×3, 5.000 Items, 5 Eingänge) nehmen nur an ihren markierten Eingängen an.
 - **Meilensteine:** Oben links steht jeweils der nächste Schritt.
 - **Speichern:** Der Spielstand wird im `localStorage` des Browsers gespeichert.
