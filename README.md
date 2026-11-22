@@ -43,7 +43,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 
 ## Basis, Barken und Kompass
 
-- **Basisturm:** In einem neuen Spiel steht neben dem Startpunkt der Basisturm (3×3 Felder, 15 Blöcke hoch). Er ist unzerstörbar und muss verteidigt werden.
+- **Basisturm:** In einem neuen Spiel steht neben dem Startpunkt der Basisturm (3×3 Felder, 15 Blöcke hoch). Er ist unzerstörbar und muss verteidigt werden. Am Pfad nahe dem Turm steht von Anfang an eine Balliste.
 - **Barken:** Barken baust du im Baumenü unter Werkstatt. Es sind Wegpunkte mit Lichtsäule. Im Fenster (E) kannst du sie benennen.
 - **Kompass:** Oben am Bildrand zeigt er die Himmelsrichtungen (Norden = Blickrichtung beim Start) sowie Marker mit Entfernung zur Basis und zu allen Barken.
 

@@ -730,7 +730,7 @@ function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:
   for(const b of data.belts)if(clearFor('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
  if(data&&data.td){const t=data.td;
   if(td.path){for(const[ty,sv,hp,mx]of t.en){const e=spawnEnemy(ty,mx,0,Math.min(sv,route.length-1));e.hp=hp}spawnQ=t.q.map((ty,i)=>({ty,t:i*1.6}));waveT=0}}
- if(!data){placeBaseTower();const tw=machines.find(m=>m.type==='tower');if(tw)makePath(tw)}
+ if(!data){placeBaseTower();const tw=machines.find(m=>m.type==='tower');if(tw){makePath(tw);placeStarterBallista()}}
  stream(0,250);dirty.clear();renderHotbar();renderGoal()}
 // Neues Spiel: Basisturm steht schon (3×3, 15 hoch) nordöstlich des Startpunkts, Fundament wird aufgefüllt.
 function placeBaseTower(ox=69,oz=57){let top=0;for(let x=ox;x<ox+3;x++)for(let z=oz;z<oz+3;z++)top=Math.max(top,surfaceH(x,z));const y=top+1;
@@ -796,6 +796,13 @@ function makePath(t){const rnd=mulberry(hashI(t.x,t.z,777));let x=t.x+1,z=t.z-2;
   for(let yy=py-1;yy>0&&!solidId(get(cx,yy,cz));yy--)setBlock(cx,yy,cz,3,true);
   setBlock(cx,py,cz,25,true);for(let yy=py+1;yy<=py+4&&yy<H;yy++){const v=get(cx,yy,cz);if(v&&v!==MACH&&v!==BELT)setBlock(cx,yy,cz,0,true)}}
  td.path=path;buildPathIndex()}
+// Neues Spiel: eine Balliste steht schon neben dem Pfad, nahe am Turm.
+function placeStarterBallista(){if(!td.path)return;
+ for(const i of[10,12,8,14,6,16])for(const side of[1,-1])for(let off=3;off<=5;off++){const p=td.path[i];const x=p[0]+side*off,z=p[2],y=Math.max(p[1]+1,surfaceH(x,z)+1);
+  let ok=y+2<H;for(let ax=-1;ax<=1&&ok;ax++)for(let az=-1;az<=1&&ok;az++)for(let yy=y-1;yy<=y+2;yy++)if(pathSet.has(idx(x+ax,yy,z+az)))ok=false;
+  for(let yy=y-1;yy<=y+2&&ok;yy++){const v=get(x,yy,z);if(v===MACH||v===BELT)ok=false}if(!ok)continue;
+  for(let yy=y-1;yy>0&&!solidId(get(x,yy,z));yy--)setBlock(x,yy,z,3,true);for(let yy=y;yy<=y+2;yy++)if(get(x,yy,z))setBlock(x,yy,z,0,true);
+  createMachine('ballista',x,y,z,0);return true}return false}
 function buildPathIndex(){pathSet.clear();pathAirCols.clear();route=[];if(portal){scene.remove(portal);portal=null}if(!td.path)return;
  for(const[px,py,pz]of td.path)for(let ax=-1;ax<=1;ax++)for(let az=-1;az<=1;az++)for(let yy=py-1;yy<=py+4;yy++){const k=idx(px+ax,yy,pz+az);pathSet.add(k);
   if(yy>py){const ck=colKey((px+ax)>>4,(pz+az)>>4);let a=pathAirCols.get(ck);if(!a)pathAirCols.set(ck,a=[]);a.push(k)}}
