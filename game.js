@@ -143,7 +143,7 @@ const canvas=renderer.domElement;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9fd4f5);scene.fog=new THREE.Fog(0x9fd4f5,45,115);
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.05,220);camera.rotation.order='YXZ';
 scene.add(new THREE.HemisphereLight(0xe8f3ff,0x6b5a40,.8));const sun=new THREE.DirectionalLight(0xffffff,.65);sun.position.set(.5,1,.3);scene.add(sun);
-addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()});
+addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();viewCam.aspect=camera.aspect;viewCam.updateProjectionMatrix()});
 const terrainMat=new THREE.MeshBasicMaterial({map:makeAtlas(),vertexColors:true});
 
 // ---------- Meshing ----------
@@ -468,7 +468,7 @@ canvas.addEventListener('mousedown',e=>{if(!locked)return;
  if(e.button===0){mouseL=true;if(buildType){const ok=place&&!place.err;const pos=place&&{x:place.ox,y:place.oy,z:place.oz};tryPlace();if(buildType==='belt'){lastBeltPos=ok?pos:null;lastBelt=place?place.ox+','+place.oy+','+place.oz:''}}}
  if(e.button===2){mouseR=true;dragDist=0}});
 document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt='';lastBeltPos=null}
- if(e.button===2&&mouseR){mouseR=false;canvas.classList.remove('drag');if(locked&&dragDist<=4){if(buildType)buildType=null;else placeBlock()}}});
+ if(e.button===2&&mouseR){mouseR=false;canvas.classList.remove('drag');if(locked&&dragDist<=4){if(buildType)buildType=null;else{placeBlock();vmPunch=.3}}}});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('wheel',e=>{if(!locked)return;if(buildType){rotOff=(rotOff+(e.deltaY>0?1:3))%4}else{selSlot=(selSlot+(e.deltaY>0?1:PLACE.length-1))%PLACE.length;renderHotbar()}},{passive:true});
 function placeBlock(){const h=raycast(6);if(!h)return;const[it,id]=PLACE[selSlot];if(!inv[it])return toast('Kein '+ITEMS[it][0]+' im Inventar');
@@ -576,6 +576,36 @@ function drawItems(){let n=0;for(const b of belts.values()){const[dx,dz]=DIRS[b.
    tmpM.makeTranslation(tmpV.x,tmpV.y,tmpV.z);itemMesh.setMatrixAt(n,tmpM);itemMesh.setColorAt(n,itemCol[item]);n++}}
  itemMesh.count=n;itemMesh.instanceMatrix.needsUpdate=true;if(itemMesh.instanceColor)itemMesh.instanceColor.needsUpdate=true}
 
+// ---------- Eigene Hand / Werkzeug (Ich-Perspektive, eigener Render-Durchgang über der Welt) ----------
+renderer.autoClear=false;
+const viewScene=new THREE.Scene(),viewCam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.01,10);
+viewScene.add(new THREE.HemisphereLight(0xf2f6ff,0x5a5048,.85));{const l=new THREE.DirectionalLight(0xffffff,.55);l.position.set(-1,2,1.5);viewScene.add(l)}
+const vmPivot=new THREE.Group();vmPivot.position.set(.42,-.5,-.32);viewScene.add(vmPivot);
+let vmKey='',vmSwing=0,vmBob=0,vmPunch=0,vmEquip=0;
+const TOOLCOL=[null,0xa0703f,0x8d9094,0xd0d4d8,0x52677c];
+function vb(g,c,w,h,d,x,y,z,e){const me=new THREE.Mesh(BOX,new THREE.MeshLambertMaterial({color:c,emissive:e?c:0,emissiveIntensity:e?.6:0}));me.scale.set(w,h,d);me.position.set(x,y,z);g.add(me);return me}
+function buildViewModel(key){vmPivot.clear();const sleeve=net.role==='solo'?PCOL[0]:PCOL[net.id];
+ vb(vmPivot,sleeve,.17,.17,.5,0,0,-.22);vb(vmPivot,0x33373c,.18,.05,.18,0,0,-.47);vb(vmPivot,0xe0b48c,.15,.15,.16,0,0,-.57);
+ const hold=new THREE.Group();hold.position.set(0,.03,-.6);vmPivot.add(hold);
+ if(buildType){hold.rotation.set(-1.05,.25,0);vb(hold,0x23272c,.32,.022,.24,0,.06,-.02);vb(hold,0x3d78c2,.27,.006,.19,0,.075,-.02,1);
+  vb(hold,0xf29a2e,.12,.008,.04,-.05,.08,-.06,1);vb(hold,0xf29a2e,.04,.008,.08,.06,.08,.02,1)}
+ else if(tier>0){hold.rotation.set(-.35,0,-.15);vb(hold,0x7a5232,.045,.62,.045,0,.16,0);const hc=TOOLCOL[tier];
+  vb(hold,hc,.46,.075,.075,0,.45,0);const l=vb(hold,hc,.16,.06,.06,-.27,.41,0);l.rotation.z=.45;const r=vb(hold,hc,.16,.06,.06,.27,.41,0);r.rotation.z=-.45;
+  if(tier===4){vb(hold,0x9fd4ff,.06,.08,.08,0,.45,0,1)}}
+ else{vb(vmPivot,0xd8a77f,.16,.07,.08,0,.03,-.62)} // Faust
+ vmEquip=1}
+function updateViewModel(dt){
+ const key=(buildType?'b':'t'+tier)+'|'+net.role+net.id;if(key!==vmKey){vmKey=key;buildViewModel(key)}
+ vmPivot.visible=locked&&!panel;
+ const mining=locked&&mouseL&&!buildType&&hl.visible;
+ if(mining)vmSwing+=dt*11;else vmSwing=vmSwing%(Math.PI*2)>0.05?vmSwing+dt*11:0;
+ if(vmSwing>=Math.PI*2&&!mining)vmSwing=0;
+ const moving=locked&&P.ground&&(keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD);vmBob+=dt*(moving?(keys.ShiftLeft||keys.ShiftRight?13:9):0);
+ if(vmPunch>0)vmPunch=Math.max(0,vmPunch-dt);if(vmEquip>0)vmEquip=Math.max(0,vmEquip-dt*4);
+ const sw=Math.sin(vmSwing)*(vmSwing?1:0),pu=Math.sin(vmPunch/.3*Math.PI);
+ vmPivot.position.set(.42+Math.cos(vmBob)*.018,-.5+Math.abs(Math.sin(vmBob))*.025-vmEquip*.35-Math.max(0,sw)*.05,-.32-pu*.08);
+ vmPivot.rotation.set(.08-Math.max(0,sw)*1.05-pu*.4,.12+sw*.1,0)}
+
 // ---------- Hauptschleife ----------
 let last=performance.now(),slow=0,saveT=0,time=0;
 function frame(now){
@@ -631,7 +661,7 @@ function frame(now){
  slow+=dt;if(slow>.3){slow=0;if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
  saveT+=dt;if(saveT>60){saveT=0;if(locked&&net.role!=='client')save()}
  netTick(dt);
- renderer.render(scene,camera)}
+ updateViewModel(dt);renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam)}
 
 // ---------- Koop (PeerJS/WebRTC; der Host ist maßgeblich, Mitspieler senden nur Aktionen) ----------
 const NET_PREFIX='satiscraft-v1-',PCOL=['#f29a2e','#3d9bd6','#5fcf6f','#d65fb4'],NMAX=W*H*D;
