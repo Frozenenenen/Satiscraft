@@ -447,7 +447,8 @@ function placeBlock(){const h=raycast(6);if(!h)return;const[it,id]=PLACE[selSlot
  add(it,-1);setBlock(x,y,z,id,true);renderHotbar()}
 let place=null;
 function computePlace(){place=null;if(!buildType)return;const h=raycast(8);if(!h)return;const def=BUILD[buildType];
- const rot=(facing()+rotOff)%4,[rw,rd]=dims(def,rot);const ax=h.x+h.n[0],ay=h.y+h.n[1],az=h.z+h.n[2];
+ const rot=(facing()+rotOff)%4,[rw,rd]=dims(def,rot);// Zielt man von oben auf ein Band, wird auf dessen Höhe gebaut (z. B. Brückenmitte genau über dem Band).
+ const onBelt=h.id===BELT&&h.n[1]===1;const ax=onBelt?h.x:h.x+h.n[0],ay=onBelt?h.y:h.y+h.n[1],az=onBelt?h.z:h.z+h.n[2];
  const ox=ax-Math.floor(rw/2),oz=az-Math.floor(rd/2);place={ox,oy:ay,oz,rot,rw,rd,err:checkPlace(buildType,ox,ay,oz,rot)}}
 function tryPlace(){if(!place)return;if(place.err){toast(place.err);return}const def=BUILD[buildType];
  for(const k in def.cost)add(k,-def.cost[k]);createMachine(buildType,place.ox,place.oy,place.oz,place.rot);renderHotbar();
