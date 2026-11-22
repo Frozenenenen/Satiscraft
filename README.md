@@ -33,4 +33,4 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Content Security Policy:** `index.html` setzt eine strenge CSP. Skripte kommen nur aus `game.js` und dem festen three.js-Pfad auf cdnjs, Inline-Skripte sind gesperrt. Es gibt keine Netzwerkverbindungen (`connect-src 'none'`), keine Plugins, Formulare oder `<base>`.
 - **Speicherstände:** Sie werden beim Laden streng geprüft, weil sich auf `*.github.io` alle Pages-Seiten eines Kontos denselben `localStorage` teilen. Nur bekannte Item- und Gebäudetypen, gültige Zahlen und Koordinaten innerhalb der Welt werden übernommen. Kaputte Stände führen zu einer neuen Welt statt zu einem Absturz.
 - **Keine Nutzerdaten:** Das Spiel hat kein Backend, keine Cookies und kein Tracking. Die Seite sendet keinen Referrer.
-- **Offen:** Für three.js fehlt noch ein Subresource-Integrity-Hash (`integrity="sha384-…"`). Alternativ kann man `three.min.js` direkt ins Repo legen.
+- **Subresource Integrity:** three.js r128 wird mit einem SHA-384-Hash geladen. Eine veränderte CDN-Datei führt der Browser nicht aus.
