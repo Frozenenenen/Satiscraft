@@ -209,7 +209,7 @@ function model(type,ghost){
  const GL=c=>ghost?ghostMat:new THREE.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.2});
  if(type==='belt'){bx(g,C(0x3a3f45),.98,.1,1,0,0,0);bx(g,C(0x707780),.08,.16,1,-.46,0,0);bx(g,C(0x707780),.08,.16,1,.46,0,0);
   const t=new THREE.Mesh(BPLANE,ghost?ghostMat:beltTop);t.rotation.x=-Math.PI/2;t.position.y=.105;g.add(t);
-  if(ghost){const ar=new THREE.Mesh(PLANE,arrOut);ar.rotation.x=-Math.PI/2;ar.rotation.z=Math.PI;ar.position.y=.2;g.add(ar)}return{g,a}}
+  if(ghost){const ar=new THREE.Mesh(PLANE,arrOut);ar.rotation.x=-Math.PI/2;ar.position.y=.2;g.add(ar)}return{g,a}}
  if(type==='workbench'){bx(g,C(0xa0703f),1.9,.16,1.9,0,.78,0);for(const sx of[-.8,.8])for(const sz of[-.8,.8])bx(g,C(0x6e4a28),.16,.78,.16,sx,0,sz);
   bx(g,C(0x5e656d),.55,.28,.32,.45,.94,-.45);bx(g,C(0x34383d),.5,.22,.3,-.4,.94,.35);bx(g,C(0xc9ced4),.7,.04,.12,.1,.94,.2);bx(g,C(0x6e4a28),1.7,.08,1.7,0,.25,0);
   const hm=new THREE.Group();hm.position.set(-.05,1.0,.35);bx(hm,C(0x7a5232),.06,.06,.5,0,0,.2);bx(hm,C(0x4a4f55),.12,.12,.22,0,-.03,.45).rotation.y=Math.PI/2;g.add(hm);a.hammer=hm;
@@ -229,7 +229,7 @@ function model(type,ghost){
  if(type==='assembler'){bx(g,C(0x3b3f44),2.95,.25,2.95,0,0,0);bx(g,C(0x2f9b8f),2.6,1,2.6,0,.25,0);bx(g,C(0xd0d4d8),1.4,.1,1.4,0,1.25,.2);
   const arm=new THREE.Group();arm.position.set(-.8,1.25,-.8);bx(arm,C(0xe8892b),.3,.9,.3,0,0,0);const up=bx(arm,C(0xe8892b),.2,.2,1.1,0,.8,.5);up.position.z=.5;
   bx(arm,C(0x33373c),.25,.3,.25,0,.55,1.05);g.add(arm);a.arm=arm;a.emit.push({p:[0,1.4,.2],k:'spark'})}
- const ports=(list,mat)=>{if(!Array.isArray(list))return;for(const[lx,lz,ld]of list){const p=new THREE.Object3D();p.position.set(lx+.5-def.w/2,.04,lz+.5-def.d/2);p.rotation.y=Math.PI-ld*Math.PI/2;
+ const ports=(list,mat)=>{if(!Array.isArray(list))return;for(const[lx,lz,ld]of list){const p=new THREE.Object3D();p.position.set(lx+.5-def.w/2,.04,lz+.5-def.d/2);p.rotation.y=-ld*Math.PI/2;
   const ar=new THREE.Mesh(PLANE,mat);ar.rotation.x=-Math.PI/2;p.add(ar);g.add(p)}};
  ports(def.ins,arrIn);ports(def.outs,arrOut);return{g,a}}
 
