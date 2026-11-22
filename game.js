@@ -1,6 +1,6 @@
 {
 // ---------- Konstanten & Daten ----------
-const W=128,H=64,D=128,CS=16,MACH=250,BELT=251,RESERVE=40,MAXIN=20,MAXOUT=20,BS=1.6,SP=0.34;
+const H=64,CS=16,MACH=250,BELT=251,RESERVE=40,MAXIN=20,MAXOUT=20,BS=1.6,SP=0.34;
 const DIRS=[[0,1],[-1,0],[0,-1],[1,0]];
 const KEY='satiscraft-v1';
 const ITEMS={wood:['Holz','#9b6b3d'],dirt:['Erde','#7a5535'],stone:['Stein','#8d9094'],sand:['Sand','#e3d39a'],coal:['Kohle','#2b2b2e'],
@@ -66,11 +66,19 @@ const GOALS=[
  ['Alle Meilensteine erreicht. Automatisiere deine Fabrik weiter!',()=>false]];
 
 // ---------- Zustand ----------
-const world=new Uint8Array(W*H*D);
+// Endlose Welt: Spalten (Chunks) von 16×64×16 Blöcken, erzeugt bei Bedarf aus dem Seed.
 const changes=new Map(),reserves=new Map(),machineAt=new Map(),belts=new Map();
 let machines=[],inv={},tier=0,stats={delivered:0,produced:{}},goal=0,seed=1;
-const idx=(x,y,z)=>x+z*W+y*W*D;
-function get(x,y,z){if(y<0)return 12;if(x<0||z<0||x>=W||z>=D||y>=H)return 0;return world[x+z*W+y*W*D]}
+const OFF=1048576,ZS=2097152,LIM=1000000;
+const idx=(x,y,z)=>((x+OFF)*ZS+(z+OFF))*64+y;  // eindeutiger Schlüssel auch für negative Koordinaten
+const kX=i=>Math.floor(i/(64*ZS))-OFF,kZ=i=>Math.floor(i/64)%ZS-OFF,kY=i=>i%64;
+const isKey=i=>Number.isInteger(i)&&i>=0&&i<ZS*ZS*64,isXZ=v=>Number.isInteger(v)&&v>=-LIM&&v<LIM;
+const cols=new Map(),changesByCol=new Map();const colKey=(cx,cz)=>(cx+65536)*131072+(cz+65536);
+function colAt(cx,cz){return cols.get(colKey(cx,cz))||genCol(cx,cz)}
+function get(x,y,z){if(y<0)return 12;if(y>=H)return 0;return colAt(x>>4,z>>4).d[(x&15)|((z&15)<<4)|(y<<8)]}
+function rawSet(x,y,z,id){if(y<0||y>=H)return;colAt(x>>4,z>>4).d[(x&15)|((z&15)<<4)|(y<<8)]=id}
+const getI=i=>get(kX(i),kY(i),kZ(i)),setI=(i,id)=>rawSet(kX(i),kY(i),kZ(i),id);
+function recordChange(i,id){changes.set(i,id);const ck=colKey(kX(i)>>4,kZ(i)>>4);let s=changesByCol.get(ck);if(!s)changesByCol.set(ck,s=new Set());s.add(i)}
 const opaque=id=>id>0&&id<200;
 const count=t=>machines.filter(m=>m.type===t).length;
 const add=(it,n)=>{inv[it]=(inv[it]||0)+n;if(inv[it]<=0)delete inv[it]};
@@ -86,34 +94,37 @@ function vnoise(x,z){const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi,u=x
 function fbm(x,z,o){let s=0,a=1,f=1,n=0;for(let i=0;i<o;i++){s+=vnoise(x*f,z*f)*a;n+=a;a*=.5;f*=2}return s/n}
 
 // ---------- Weltgenerierung ----------
-let heights=new Int16Array(W*D);
-function generate(){
- world.fill(0);reserves.clear();
- const rnd=mulberry(seed*7919+13);
- const rawH=(x,z)=>{const b=fbm(x/38,z/38,4),m=fbm(x/80+31.7,z/80+11.3,3);return Math.max(6,Math.min(H-12,Math.floor(12+b*16+Math.max(0,m-.52)*70)))};
- // Startplatz an die Umgebungshöhe angleichen (Mittel über einen Ring), damit keine Grube entsteht
- let hc=0;for(let i=0;i<16;i++){const a=i/16*Math.PI*2;hc+=rawH(64+Math.round(Math.cos(a)*14),64+Math.round(Math.sin(a)*14))}hc=Math.round(hc/16);
- for(let x=0;x<W;x++)for(let z=0;z<D;z++){
-  let h=rawH(x,z);
-  const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const t=dd/14;h=Math.round(h*t+hc*(1-t))}
-  heights[x+z*W]=h;
-  for(let y=0;y<=h;y++){let id=y===0?12:y<h-3?3:y<h?2:1;
-   if(h<=14&&y>=h-2)id=4;if(h>32&&y>=h-1)id=3;world[idx(x,y,z)]=id}
- }
- const vein=(id,cx,cy,cz,r)=>{const R=Math.ceil(r);for(let x=cx-R;x<=cx+R;x++)for(let y=cy-R;y<=cy+R;y++)for(let z=cz-R;z<=cz+R;z++){
-  if(x<0||z<0||x>=W||z>=D||y<1||y>=H)continue;const d=Math.hypot(x-cx,(y-cy)*1.3,z-cz);const c=world[idx(x,y,z)];
-  if(d<r+rnd()*.5&&c>=1&&c<=4)world[idx(x,y,z)]=id}};
- const spec=[[7,46,0,3],[8,28,0,3],[9,32,0,3],[10,16,2,9],[11,12,4,14]];
- for(const[id,n,dmin,dvar]of spec)for(let i=0;i<n;i++){const x=Math.floor(rnd()*W),z=Math.floor(rnd()*D),h=heights[x+z*W];
-  let y=h-dmin-Math.floor(rnd()*dvar);if(id===11&&h>30&&rnd()<.6)y=h-1;vein(id,x,Math.max(2,y),z,1.6+rnd()*1.4)}
- const sh=(x,z)=>heights[x+z*W];
- vein(7,72,sh(72,68)-1,68,2.3);vein(9,76,sh(76,57)-1,57,2.4);vein(8,55,sh(55,71)-1,71,2.3);vein(3,58,sh(58,58),58,1.5);
- for(let i=0;i<120;i++){const x=3+Math.floor(rnd()*(W-6)),z=3+Math.floor(rnd()*(D-6));
-  if(Math.hypot(x-64,z-64)<6)continue;const h=sh(x,z);if(world[idx(x,h,z)]!==1||h>34)continue;
-  const th=4+Math.floor(rnd()*3);for(let y=1;y<=th;y++)world[idx(x,h+y,z)]=5;
-  for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=th-1;ly<=th+2;ly++){
-   const r=ly>th?1.3:2.4;if(Math.hypot(lx,lz)>r)continue;const p=idx(x+lx,h+ly,z+lz);if(h+ly<H&&!world[p])world[p]=6}}
-}
+// ---------- Weltgenerierung (pro Spalte, deterministisch aus dem Seed) ----------
+function hashI(a,b,c){let h=Math.imul(a|0,374761393)^Math.imul(b|0,668265263)^Math.imul((c|0)+seed,1442695041);h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return h>>>0}
+const hash3=(x,y,z)=>hashI(x*31+y,z,7)/4294967296;
+const rawH=(x,z)=>{const b=fbm(x/38,z/38,4),m=fbm(x/80+31.7,z/80+11.3,3);return Math.max(6,Math.min(H-12,Math.floor(12+b*16+Math.max(0,m-.52)*70)))};
+let spawnH=20,spawnVeins=[];const featCache=new Map();
+function computeSpawn(){let hc=0;for(let i=0;i<16;i++){const a=i/16*Math.PI*2;hc+=rawH(64+Math.round(Math.cos(a)*14),64+Math.round(Math.sin(a)*14))}spawnH=Math.round(hc/16);
+ const sh=(x,z)=>surfaceH(x,z);spawnVeins=[[7,72,sh(72,68)-1,68,2.3],[9,76,sh(76,57)-1,57,2.4],[8,55,sh(55,71)-1,71,2.3],[3,58,sh(58,58),58,1.5]]}
+function surfaceH(x,z){let h=rawH(x,z);const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const t=dd/14;h=Math.round(h*t+spawnH*(1-t))}return h}
+// Erzadern und Bäume je Chunk; eine Spalte übernimmt auch die Teile, die aus Nachbar-Chunks hineinragen.
+const VEINS=[[7,.72,0,3],[8,.44,0,3],[9,.5,0,3],[10,.25,2,9],[11,.19,4,14]];
+function chunkFeatures(fx,fz){const k=colKey(fx,fz);let f=featCache.get(k);if(f)return f;const rnd=mulberry(hashI(fx,fz,99));f={v:[],t:[]};
+ for(const[id,dens,dmin,dvar]of VEINS){const n=Math.floor(dens)+(rnd()<dens%1?1:0);for(let i=0;i<n;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),h=surfaceH(x,z);
+  let y=h-dmin-Math.floor(rnd()*dvar);if(id===11&&h>30&&rnd()<.6)y=h-1;f.v.push([id,x,Math.max(2,y),z,1.6+rnd()*1.4])}}
+ for(let i=0;i<2;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),th=4+Math.floor(rnd()*3),h=surfaceH(x,z);
+  if(Math.hypot(x-64,z-64)<6||h<=14||h>32)continue;f.t.push([x,h,z,th])}
+ featCache.set(k,f);return f}
+function genCol(cx,cz){const c={cx,cz,d:new Uint8Array(16*16*H),m:[null,null,null,null],shown:false,leaf:false};cols.set(colKey(cx,cz),c);const d=c.d,x0=cx*16,z0=cz*16;
+ const I=(x,y,z)=>(x-x0)|((z-z0)<<4)|(y<<8),inside=(x,y,z)=>x>=x0&&x<x0+16&&z>=z0&&z<z0+16&&y>=0&&y<H;
+ for(let x=x0;x<x0+16;x++)for(let z=z0;z<z0+16;z++){const h=surfaceH(x,z);
+  for(let y=0;y<=h;y++){let id=y===0?12:y<h-3?3:y<h?2:1;if(h<=14&&y>=h-2)id=4;if(h>32&&y>=h-1)id=3;d[I(x,y,z)]=id}}
+ const vein=(id,vx,vy,vz,r)=>{const R=Math.ceil(r);for(let x=Math.max(vx-R,x0);x<=Math.min(vx+R,x0+15);x++)for(let z=Math.max(vz-R,z0);z<=Math.min(vz+R,z0+15);z++)for(let y=Math.max(1,vy-R);y<=Math.min(H-1,vy+R);y++){
+  const dd=Math.hypot(x-vx,(y-vy)*1.3,z-vz),p=I(x,y,z),cur=d[p];if(dd<r+hash3(x,y,z)*.5&&cur>=1&&cur<=4)d[p]=id}};
+ const near=[];for(let fx=cx-1;fx<=cx+1;fx++)for(let fz=cz-1;fz<=cz+1;fz++)near.push(chunkFeatures(fx,fz));
+ for(const f of near)for(const v of f.v)vein(...v);
+ for(const v of spawnVeins)vein(...v);
+ for(const f of near)for(const[tx,h,tz,th]of f.t){
+  for(let y=1;y<=th;y++)if(inside(tx,h+y,tz))d[I(tx,h+y,tz)]=5;
+  for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=th-1;ly<=th+2;ly++){const r=ly>th?1.3:2.4;if(Math.hypot(lx,lz)>r)continue;
+   const x=tx+lx,y=h+ly,z=tz+lz;if(inside(x,y,z)&&!d[I(x,y,z)])d[I(x,y,z)]=6}}
+ const ch=changesByCol.get(colKey(cx,cz));if(ch){for(const i of ch)d[I(kX(i),kY(i),kZ(i))]=changes.get(i);c.leaf=true}
+ return c}
 
 // ---------- Texturatlas ----------
 function makeAtlas(){
@@ -155,34 +166,44 @@ for(let a=0;a<3;a++)for(const s of[1,0]){const n=[0,0,0];n[a]=s?1:-1;const u=(a+
  if(cr[0]*n[0]+cr[1]*n[1]+cr[2]*n[2]<0)cs.reverse();
  FACES.push({n,a,u,v,cs,k:a===1?(s?0:2):1,sh:a===1?(s?1:.5):a===0?.8:.66})}
 const AOL=[.5,.68,.84,1];
-const NCX=W/CS,NCY=H/CS,NCZ=D/CS;const chunks=new Array(NCX*NCY*NCZ).fill(null);const dirty=new Set();
-function buildChunk(ci){
- const cx=ci%NCX,cz=Math.floor(ci/NCX)%NCZ,cy=Math.floor(ci/(NCX*NCZ));
- const pos=[],col=[],uv=[],ind=[];let vc=0;const p1=[0,0,0],p2=[0,0,0],p3=[0,0,0];
- for(let y=cy*CS;y<cy*CS+CS;y++)for(let z=cz*CS;z<cz*CS+CS;z++)for(let x=cx*CS;x<cx*CS+CS;x++){
-  const id=world[idx(x,y,z)];if(!id||id>=200)continue;const bd=BL[id];
+const dirty=new Set();const meshKey=(cx,cy,cz)=>colKey(cx,cz)*4+cy;
+function buildChunk(cx,cy,cz){const c=cols.get(colKey(cx,cz));if(!c)return;
+ const pos=[],col=[],uv=[],ind=[];let vc=0;const p1=[0,0,0],p2=[0,0,0],p3=[0,0,0],x0=cx*CS,z0=cz*CS;
+ for(let y=cy*CS;y<cy*CS+CS;y++)for(let z=z0;z<z0+CS;z++)for(let x=x0;x<x0+CS;x++){
+  const id=c.d[(x-x0)|((z-z0)<<4)|(y<<8)];if(!id||id>=200)continue;const bd=BL[id];
   for(const f of FACES){const nx=x+f.n[0],ny=y+f.n[1],nz=z+f.n[2];if(opaque(get(nx,ny,nz)))continue;
    const tile=bd.t[f.k],tu=(tile%4)/4,tv=1-(Math.floor(tile/4)+1)/4;const ao=[];
-   for(let i=0;i<4;i++){const c=f.cs[i];pos.push(x+c[0],y+c[1],z+c[2]);
-    const du=c[f.u]?1:-1,dv=c[f.v]?1:-1;
+   for(let i=0;i<4;i++){const cc=f.cs[i];pos.push(x+cc[0],y+cc[1],z+cc[2]);
+    const du=cc[f.u]?1:-1,dv=cc[f.v]?1:-1;
     p1[0]=p2[0]=p3[0]=nx;p1[1]=p2[1]=p3[1]=ny;p1[2]=p2[2]=p3[2]=nz;p1[f.u]+=du;p2[f.v]+=dv;p3[f.u]+=du;p3[f.v]+=dv;
     const s1=opaque(get(p1[0],p1[1],p1[2]))?1:0,s2=opaque(get(p2[0],p2[1],p2[2]))?1:0,s3=opaque(get(p3[0],p3[1],p3[2]))?1:0;
     const a=(s1&&s2)?0:3-(s1+s2+s3);ao.push(a);const br=AOL[a]*f.sh;col.push(br,br,br);
-    let U,V;if(f.a===1){U=c[0];V=c[2]}else if(f.a===0){U=c[2];V=c[1]}else{U=c[0];V=c[1]}
+    let U,V;if(f.a===1){U=cc[0];V=cc[2]}else if(f.a===0){U=cc[2];V=cc[1]}else{U=cc[0];V=cc[1]}
     uv.push(tu+.002+U*.246,tv+.002+V*.246)}
    if(ao[0]+ao[2]>=ao[1]+ao[3])ind.push(vc,vc+1,vc+2,vc,vc+2,vc+3);else ind.push(vc+1,vc+2,vc+3,vc+1,vc+3,vc);vc+=4}}
- if(chunks[ci]){scene.remove(chunks[ci]);chunks[ci].geometry.dispose();chunks[ci]=null}
+ if(c.m[cy]){scene.remove(c.m[cy]);c.m[cy].geometry.dispose();c.m[cy]=null}
  if(!vc)return;
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
  g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
  g.setIndex(new THREE.BufferAttribute(new Uint32Array(ind),1));g.computeBoundingSphere();
- const m=new THREE.Mesh(g,terrainMat);scene.add(m);chunks[ci]=m}
-function markDirty(x,y,z){const cx=Math.floor(x/CS),cy=Math.floor(y/CS),cz=Math.floor(z/CS);
+ const m=new THREE.Mesh(g,terrainMat);scene.add(m);c.m[cy]=m}
+function hideCol(c){for(let cy=0;cy<4;cy++)if(c.m[cy]){scene.remove(c.m[cy]);c.m[cy].geometry.dispose();c.m[cy]=null}c.shown=false}
+function markDirty(x,y,z){const cx=x>>4,cy=y>>4,cz=z>>4,lx=x&15,ly=y&15,lz=z&15;
  for(let ax=-1;ax<=1;ax++)for(let ay=-1;ay<=1;ay++)for(let az=-1;az<=1;az++){
-  const lx=x-cx*CS,ly=y-cy*CS,lz=z-cz*CS;
   if((ax===-1&&lx!==0)||(ax===1&&lx!==CS-1)||(ay===-1&&ly!==0)||(ay===1&&ly!==CS-1)||(az===-1&&lz!==0)||(az===1&&lz!==CS-1))continue;
-  const X=cx+ax,Y=cy+ay,Z=cz+az;if(X<0||Y<0||Z<0||X>=NCX||Y>=NCY||Z>=NCZ)continue;dirty.add(X+Z*NCX+Y*NCX*NCZ)}}
-function setBlock(x,y,z,id,rec){const i=idx(x,y,z);world[i]=id;if(rec)changes.set(i,id);markDirty(x,y,z);if(rec&&net.role==='host')netEmit({t:'blk',i,id})}
+  const X=cx+ax,Y=cy+ay,Z=cz+az;if(Y<0||Y>=H/CS)continue;const c=cols.get(colKey(X,Z));if(c&&c.shown)dirty.add(meshKey(X,Y,Z))}}
+// Streaming: Spalten im Umkreis erzeugen und zeichnen, ferne Spalten ausblenden (Daten bleiben erhalten).
+const RD=6,ORDER=[];for(let dx=-RD;dx<=RD;dx++)for(let dz=-RD;dz<=RD;dz++)if(dx*dx+dz*dz<=RD*RD+1)ORDER.push([dx,dz]);ORDER.sort((a,b)=>a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1]);
+let unloadT=0;
+function stream(dt,genBudget,meshBudget){const pcx=Math.floor(P.x)>>4,pcz=Math.floor(P.z)>>4;let g=0,mb=0;
+ for(const[dx,dz]of ORDER){if(mb>=meshBudget&&g>=genBudget)break;const cx=pcx+dx,cz=pcz+dz;let c=cols.get(colKey(cx,cz));
+  if(!c){if(g>=genBudget)continue;c=genCol(cx,cz);g++}
+  if(c.shown||mb>=meshBudget)continue;let ok=true;
+  for(let ax=-1;ax<=1;ax++)for(let az=-1;az<=1;az++)if(!cols.has(colKey(cx+ax,cz+az))){if(g<genBudget){genCol(cx+ax,cz+az);g++}else ok=false}
+  if(!ok)continue;for(let cy=0;cy<H/CS;cy++)buildChunk(cx,cy,cz);c.shown=true;mb++;
+  if(c.leaf){c.leaf=false;checkLeavesInCol(c)}}
+ unloadT+=dt;if(unloadT>1){unloadT=0;for(const c of cols.values())if(c.shown&&(Math.abs(c.cx-pcx)>RD+2||Math.abs(c.cz-pcz)>RD+2))hideCol(c)}}
+function setBlock(x,y,z,id,rec){const i=idx(x,y,z);rawSet(x,y,z,id);if(rec)recordChange(i,id);markDirty(x,y,z);if(rec&&net.role==='host')netEmit({t:'blk',i,id})}
 
 // ---------- Laubzerfall ----------
 // Laub ist gehalten, wenn es über höchstens LEAF_REACH zusammenhängende Laubblöcke einen Stamm berührt.
@@ -191,18 +212,18 @@ function leafSupported(x,y,z){
  const seen=new Set([idx(x,y,z)]);let front=[[x,y,z]];
  for(let d=0;d<LEAF_REACH&&front.length;d++){const next=[];
   for(const[cx,cy,cz]of front)for(const[dx,dy,dz]of N6){const nx=cx+dx,ny=cy+dy,nz=cz+dz;
-   if(nx<0||nz<0||ny<0||nx>=W||nz>=D||ny>=H)continue;const id=world[idx(nx,ny,nz)];
+   if(ny<0||ny>=H)continue;const id=get(nx,ny,nz);
    if(id===LOG)return true;if(id!==LEAF)continue;const k=idx(nx,ny,nz);if(!seen.has(k)){seen.add(k);next.push([nx,ny,nz])}}
   front=next}
  return false}
 const N6=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
 function scheduleDecay(x,y,z){const k=idx(x,y,z);if(!decay.has(k))decay.set(k,gameTime+.3+Math.random()*4)}
 function checkLeavesAround(x,y,z){const r=LEAF_REACH+1;
- for(let lx=Math.max(0,x-r);lx<=Math.min(W-1,x+r);lx++)for(let ly=Math.max(0,y-r);ly<=Math.min(H-1,y+r);ly++)for(let lz=Math.max(0,z-r);lz<=Math.min(D-1,z+r);lz++)
-  if(world[idx(lx,ly,lz)]===LEAF&&!decay.has(idx(lx,ly,lz))&&!leafSupported(lx,ly,lz))scheduleDecay(lx,ly,lz)}
-function checkAllLeaves(){for(let i=0;i<world.length;i++)if(world[i]===LEAF){const x=i%W,z=Math.floor(i/W)%D,y=Math.floor(i/(W*D));if(!leafSupported(x,y,z))scheduleDecay(x,y,z)}}
-function updateDecay(){if(net.role==='client')return;let n=0;for(const[k,t]of decay){if(t>gameTime)continue;decay.delete(k);if(world[k]!==LEAF)continue;
- const x=k%W,z=Math.floor(k/W)%D,y=Math.floor(k/(W*D));if(leafSupported(x,y,z))continue;setBlock(x,y,z,0,true);if(++n>=8)break}}
+ for(let lx=x-r;lx<=x+r;lx++)for(let ly=Math.max(0,y-r);ly<=Math.min(H-1,y+r);ly++)for(let lz=z-r;lz<=z+r;lz++)
+  if(get(lx,ly,lz)===LEAF&&!decay.has(idx(lx,ly,lz))&&!leafSupported(lx,ly,lz))scheduleDecay(lx,ly,lz)}
+function checkLeavesInCol(c){for(let p=0;p<c.d.length;p++)if(c.d[p]===LEAF){const x=c.cx*16+(p&15),z=c.cz*16+((p>>4)&15),y=p>>8;if(!leafSupported(x,y,z))scheduleDecay(x,y,z)}}
+function updateDecay(){if(net.role==='client')return;let n=0;for(const[k,t]of decay){if(t>gameTime)continue;decay.delete(k);if(getI(k)!==LEAF)continue;
+ const x=kX(k),z=kZ(k),y=kY(k);if(leafSupported(x,y,z))continue;setBlock(x,y,z,0,true);if(++n>=8)break}}
 
 // ---------- Modelle ----------
 const BOX=new THREE.BoxGeometry(1,1,1),CYL=new THREE.CylinderGeometry(.5,.5,1,10),CONE=new THREE.ConeGeometry(.5,1,8);
@@ -266,7 +287,7 @@ function cellsOf(def,ox,oy,oz,rot){const c=[];for(let lx=0;lx<def.w;lx++)for(let
  for(const dy of shapeOf(def,lx,lz))c.push({x:ox+a,y:oy+dy,z:oz+b,base:dy===0})}return c}
 function checkPlace(type,ox,oy,oz,rot,ignoreP){
  const def=BUILD[type];const cells=cellsOf(def,ox,oy,oz,rot);
- for(const c of cells){if(c.x<0||c.z<0||c.x>=W||c.z>=D||c.y<1||c.y>=H)return'Außerhalb der Welt';
+ for(const c of cells){if(!isXZ(c.x)||!isXZ(c.z)||c.y<1||c.y>=H)return'Außerhalb der Welt';
   if(get(c.x,c.y,c.z)&&!(def.router&&get(c.x,c.y,c.z)===BELT))return'Platz blockiert – Blöcke wegräumen';
   if(c.base&&!opaque(get(c.x,c.y-1,c.z)))return'Fläche nicht eben – Boden fehlt'}
  const px0=Math.floor(P.x-.3),px1=Math.floor(P.x+.3),pz0=Math.floor(P.z-.3),pz1=Math.floor(P.z+.3),py0=Math.floor(P.y),py1=Math.floor(P.y+1.79);
@@ -275,11 +296,11 @@ function checkPlace(type,ox,oy,oz,rot,ignoreP){
 function createMachine(type,ox,oy,oz,rot,data){
  const def=BUILD[type],[rw,rd]=dims(def,rot);
  if(type==='belt'){const b={x:ox,y:oy,z:oz,dir:rot,items:[],s:0};const g=new THREE.Group(),k=model('belt').g;g.add(k);b.k=k;g.position.set(ox+.5,oy,oz+.5);g.rotation.y=-rot*Math.PI/2;scene.add(g);b.g=g;
-  belts.set(idx(ox,oy,oz),b);world[idx(ox,oy,oz)]=BELT;if(data)b.items=data.map((it,i)=>({item:it,p:Math.max(0,.9-i*SP)}));slopesDirty=true;if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return b}
+  belts.set(idx(ox,oy,oz),b);rawSet(ox,oy,oz,BELT);if(data)b.items=data.map((it,i)=>({item:it,p:Math.max(0,.9-i*SP)}));slopesDirty=true;if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return b}
  const m={type,x:ox,y:oy,z:oz,rot,rw,rd,h:def.h,inBuf:{},outBuf:{},recipe:0,t:0,status:'',working:false,tr:[]};
  if(data){m.inBuf=data.i||{};m.outBuf=data.o||{};m.recipe=data.rc||0}
  m.cells=cellsOf(def,ox,oy,oz,rot).map(c=>idx(c.x,c.y,c.z));
- for(const i of m.cells){world[i]=MACH;machineAt.set(i,m);markDirty(i%W,Math.floor(i/(W*D)),Math.floor(i/W)%D)}
+ for(const i of m.cells){setI(i,MACH);machineAt.set(i,m);markDirty(kX(i),kY(i),kZ(i))}
  const mp=l=>Array.isArray(l)?l.map(([lx,lz,ld])=>{const[a,b]=toW(def,rot,lx,lz);return{x:ox+a,y:oy,z:oz+b,dir:(ld+rot)%4}}):[];
  m.ins=mp(def.ins);m.outs=mp(def.outs);
  if(def.router&&data){for(const k in m.outBuf)for(let i=0;i<m.outBuf[k]&&m.tr.length<4;i++)m.tr.push({item:k});m.outBuf={}}
@@ -287,9 +308,9 @@ function createMachine(type,ox,oy,oz,rot,data){
  const{g,a}=model(type);g.position.set(ox+rw/2,oy,oz+rd/2);g.rotation.y=-rot*Math.PI/2;scene.add(g);g.updateMatrixWorld(true);m.g=g;m.a=a;m.pulse=0;m.emitT=Math.random()*.3;machines.push(m);if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return m}
 function removeBuilding(t){
  if(net.role==='host')netEmit({t:'rm',i:keyOf(t)});
- if(t.dir!==undefined&&t.items){scene.remove(t.g);belts.delete(idx(t.x,t.y,t.z));slopesDirty=true;world[idx(t.x,t.y,t.z)]=0;for(const i of t.items)add(i.item,1);
+ if(t.dir!==undefined&&t.items){scene.remove(t.g);belts.delete(idx(t.x,t.y,t.z));slopesDirty=true;rawSet(t.x,t.y,t.z,0);for(const i of t.items)add(i.item,1);
   for(const k in BUILD.belt.cost)add(k,BUILD.belt.cost[k]);return}
- const m=t;for(const i of m.cells){world[i]=0;machineAt.delete(i);markDirty(i%W,Math.floor(i/(W*D)),Math.floor(i/W)%D)}for(const it of m.tr)add(it.item,1);
+ const m=t;for(const i of m.cells){setI(i,0);machineAt.delete(i);markDirty(kX(i),kY(i),kZ(i))}for(const it of m.tr)add(it.item,1);
  scene.remove(m.g);machines=machines.filter(q=>q!==m);for(const k in m.inBuf)add(k,m.inBuf[k]);for(const k in m.outBuf)add(k,m.outBuf[k]);
  const c=BUILD[m.type].cost;for(const k in c)add(k,c[k]);if(panel&&panel.m===m)closePanel()}
 
@@ -313,7 +334,7 @@ function machineAccept(m,item,pi){
  if((m.inBuf[item]||0)>=MAXIN)return false;m.inBuf[item]=(m.inBuf[item]||0)+1;return true}
 function transfer(b,item){
  const[dx,dz]=DIRS[b.dir],tx=b.x+dx,tz=b.z+dz;
- for(const dy of[0,1,-1]){const nb=belts.get(idx(tx,b.y+dy,tz));if(tx<0||tz<0||tx>=W||tz>=D)return false;
+ for(const dy of[0,1,-1]){const nb=belts.get(idx(tx,b.y+dy,tz));
   if(nb){if(nb.dir===(b.dir+2)%4)return false;if(beltFree(nb)){nb.items.push({item,p:0});return true}return false}}
  const m=machineAt.get(idx(tx,b.y,tz));if(!m)return false;
  const pi=m.ins.findIndex(p=>p.x===b.x&&p.y===b.y&&p.z===b.z&&p.dir===b.dir);
@@ -374,11 +395,11 @@ function movePlayer(dt){
  if(keys.KeyW){fx+=sx;fz+=sz}if(keys.KeyS){fx-=sx;fz-=sz}if(keys.KeyA){fx+=sz;fz-=sx}if(keys.KeyD){fx-=sz;fz+=sx}
  const l=Math.hypot(fx,fz)||1;const vx=fx/l*sp,vz=fz/l*sp;
  let nx=P.x+vx*dt;if(!collides(nx,P.y,P.z))P.x=nx;let nz=P.z+vz*dt;if(!collides(P.x,P.y,nz))P.z=nz;
- P.x=Math.max(.4,Math.min(W-.4,P.x));P.z=Math.max(.4,Math.min(D-.4,P.z));
+ P.x=Math.max(-LIM+1,Math.min(LIM-1,P.x));P.z=Math.max(-LIM+1,Math.min(LIM-1,P.z));
  if(keys.Space&&P.ground){P.vy=8.2;P.ground=false}
  P.vy=Math.max(-40,P.vy-26*dt);const ny=P.y+P.vy*dt;
  if(collides(P.x,ny,P.z)){if(P.vy<0){const sy=Math.floor(ny)+1;if(!collides(P.x,sy,P.z))P.y=sy;P.ground=true}P.vy=0}else{P.y=ny;P.ground=false}
- if(P.y<-10){P.y=heights[Math.floor(P.x)+Math.floor(P.z)*W]+2;P.vy=0}}
+ if(P.y<-10){P.y=surfaceH(Math.floor(P.x),Math.floor(P.z))+2;P.vy=0}}
 const aimV=new THREE.Vector3(),mouse={x:0,y:0};let mouseR=false,dragDist=0;
 function raycast(max){
  const ox=P.x,oy=P.y+1.62,oz=P.z;camera.updateMatrixWorld();aimV.set(mouse.x,mouse.y,.5).unproject(camera).sub(camera.position).normalize();const dx=aimV.x,dy=aimV.y,dz=aimV.z;
@@ -485,7 +506,7 @@ document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt='
 document.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('wheel',e=>{if(!locked)return;if(buildType){rotOff=(rotOff+(e.deltaY>0?1:3))%4}else{selSlot=(selSlot+(e.deltaY>0?1:PLACE.length-1))%PLACE.length;renderHotbar()}},{passive:true});
 function placeBlock(){const h=raycast(6);if(!h)return;const[it,id]=PLACE[selSlot];if(!inv[it])return toast('Kein '+ITEMS[it][0]+' im Inventar');
- const x=h.x+h.n[0],y=h.y+h.n[1],z=h.z+h.n[2];if(x<0||z<0||x>=W||z>=D||y<1||y>=H||get(x,y,z))return;
+ const x=h.x+h.n[0],y=h.y+h.n[1],z=h.z+h.n[2];if(!isXZ(x)||!isXZ(z)||y<1||y>=H||get(x,y,z))return;
  if(Math.floor(P.x-.3)<=x&&x<=Math.floor(P.x+.3)&&Math.floor(P.z-.3)<=z&&z<=Math.floor(P.z+.3)&&Math.floor(P.y)<=y&&y<=Math.floor(P.y+1.79))return;
  if(net.role==='client'){netSend({t:'act',a:'place',slot:selSlot,x,y,z});return}
  add(it,-1);setBlock(x,y,z,id,true);renderHotbar()}
@@ -515,7 +536,7 @@ function dragBelt(){const k=place.ox+','+place.oy+','+place.oz;if(k===lastBelt||
  lastBelt=k;const pos={x:place.ox,y:place.oy,z:place.oz};tryPlace(dir??undefined);lastBeltPos=pos}
 
 // ---------- Speichern / Laden ----------
-function snapshot(){return{seed,changes:[...changes],res:[...reserves],inv,tier,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
+function snapshot(){return{v:2,seed,changes:[...changes],res:[...reserves],inv,tier,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
  machines:machines.map(m=>{const o={...m.outBuf};for(const it of m.tr)o[it.item]=(o[it.item]||0)+1;return{t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o,rc:m.recipe}}),
  belts:[...belts.values()].map(b=>[b.x,b.y,b.z,b.dir,b.items.map(i=>i.item)])}}
 function save(){if(net.role==='client'){toast('Im Koop speichert der Host');return false}try{const data=snapshot();
@@ -531,31 +552,33 @@ const isNum=(v,a,b)=>typeof v==='number'&&isFinite(v)&&v>=a&&v<=b;
 const arr=v=>Array.isArray(v)?v:[];
 function cleanBag(o,max){const r={};if(o&&typeof o==='object'&&!Array.isArray(o))for(const k of Object.keys(o))if(own(ITEMS,k)&&isInt(o[k],1,max))r[k]=o[k];return r}
 function sanitize(d){
- if(!d||typeof d!=='object'||!isInt(d.seed,0,1e9))return null;const N=W*H*D;
+ if(!d||typeof d!=='object'||!isInt(d.seed,0,1e9))return null;
+ // Spielstände vor der endlosen Welt (v1) nutzten Schlüssel x+z*128+y*16384 – umrechnen.
+ const conv=d.v===2?(i=>isKey(i)?i:-1):(i=>isInt(i,0,128*64*128-1)?idx(i%128,Math.floor(i/16384),Math.floor(i/128)%128):-1);
  const o={seed:d.seed,changes:[],res:[],machines:[],belts:[]};
- for(const c of arr(d.changes))if(Array.isArray(c)&&isInt(c[0],0,N-1)&&isInt(c[1],0,12))o.changes.push([c[0],c[1]]);
- for(const c of arr(d.res))if(Array.isArray(c)&&isInt(c[0],0,N-1)&&isInt(c[1],1,RESERVE))o.res.push([c[0],c[1]]);
+ for(const c of arr(d.changes))if(Array.isArray(c)&&isInt(c[1],0,12)){const k=conv(c[0]);if(k>=0&&kY(k)<H)o.changes.push([k,c[1]])}
+ for(const c of arr(d.res))if(Array.isArray(c)&&isInt(c[1],1,RESERVE)){const k=conv(c[0]);if(k>=0)o.res.push([k,c[1]])}
  o.inv=cleanBag(d.inv,1e9);o.tier=isInt(d.tier,0,4)?d.tier:0;o.goal=isInt(d.goal,0,GOALS.length-1)?d.goal:0;
  const st=d.stats&&typeof d.stats==='object'?d.stats:{};o.stats={delivered:isInt(st.delivered,0,1e12)?st.delivered:0,produced:cleanBag(st.produced,1e12)};
  const p=d.P&&typeof d.P==='object'?d.P:{};o.P={};
- for(const[k,a,b]of[['x',.4,W-.4],['y',-5,H+5],['z',.4,D-.4],['yaw',-1e6,1e6],['pitch',-1.55,1.55]])if(isNum(p[k],a,b))o.P[k]=p[k];
+ for(const[k,a,b]of[['x',-LIM,LIM],['y',-5,H+5],['z',-LIM,LIM],['yaw',-1e6,1e6],['pitch',-1.55,1.55]])if(isNum(p[k],a,b))o.P[k]=p[k];
  for(const m of arr(d.machines)){if(!m||typeof m!=='object'||!own(BUILD,m.t)||m.t==='belt')continue;
-  if(!isInt(m.x,0,W-1)||!isInt(m.y,1,H-1)||!isInt(m.z,0,D-1)||!isInt(m.r,0,3))continue;
+  if(!isXZ(m.x)||!isInt(m.y,1,H-1)||!isXZ(m.z)||!isInt(m.r,0,3))continue;
   const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0})}
- for(const b of arr(d.belts)){if(!Array.isArray(b)||!isInt(b[0],0,W-1)||!isInt(b[1],1,H-1)||!isInt(b[2],0,D-1)||!isInt(b[3],0,3))continue;
+ for(const b of arr(d.belts)){if(!Array.isArray(b)||!isXZ(b[0])||!isInt(b[1],1,H-1)||!isXZ(b[2])||!isInt(b[3],0,3))continue;
   o.belts.push([b[0],b[1],b[2],b[3],arr(b[4]).filter(k=>typeof k==='string'&&own(ITEMS,k)).slice(0,4)])}
  return o}
-function fits(type,ox,oy,oz,rot){if(type==='belt')return ox>=0&&oz>=0&&oy>=1&&ox<W&&oz<D&&oy<H&&!world[idx(ox,oy,oz)];
- return cellsOf(BUILD[type],ox,oy,oz,rot).every(c=>c.x>=0&&c.z>=0&&c.y>=1&&c.x<W&&c.z<D&&c.y<H&&!world[idx(c.x,c.y,c.z)])}
+function fits(type,ox,oy,oz,rot){if(type==='belt')return isXZ(ox)&&isXZ(oz)&&oy>=1&&oy<H&&!get(ox,oy,oz);
+ return cellsOf(BUILD[type],ox,oy,oz,rot).every(c=>isXZ(c.x)&&isXZ(c.z)&&c.y>=1&&c.y<H&&!get(c.x,c.y,c.z))}
 function clearAll(){decay.clear();for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
- for(let i=0;i<chunks.length;i++)if(chunks[i]){scene.remove(chunks[i]);chunks[i].geometry.dispose();chunks[i]=null}dirty.clear();buildType=null}
-function newWorld(s,data){clearAll();seed=s;generate();inv={};tier=0;stats={delivered:0,produced:{}};goal=0;
- P.x=64.5;P.z=64.5;P.y=heights[64+64*W]+1;P.vy=0;P.yaw=0;P.pitch=-.15;
- if(data){for(const[i,id]of data.changes){world[i]=id;changes.set(i,id)}for(const[i,r]of data.res)reserves.set(i,r);
+ for(const c of cols.values())hideCol(c);cols.clear();changesByCol.clear();featCache.clear();reserves.clear();dirty.clear();buildType=null}
+function newWorld(s,data){clearAll();seed=s;computeSpawn();inv={};tier=0;stats={delivered:0,produced:{}};goal=0;
+ P.x=64.5;P.z=64.5;P.y=surfaceH(64,64)+1;P.vy=0;P.yaw=0;P.pitch=-.15;
+ if(data){for(const[i,id]of data.changes)recordChange(i,id);for(const[i,r]of data.res)reserves.set(i,r);
   inv=data.inv||{};tier=data.tier||0;stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
   for(const m of data.machines)if(fits(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m);
   for(const b of data.belts)if(fits('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
- if(data)checkAllLeaves();for(let i=0;i<chunks.length;i++)buildChunk(i);dirty.clear();renderHotbar();renderGoal()}
+ stream(0,80,30);dirty.clear();renderHotbar();renderGoal()}
 
 // ---------- Szene-Helfer ----------
 // ---------- Partikel (Rauch, Dampf, Staub, Funken) ----------
@@ -640,7 +663,8 @@ function frame(now){
    for(const e of a.emit){tmpV.set(e.p[0],e.p[1],e.p[2]);m.g.localToWorld(tmpV);emit(tmpV,e.k)}}}}
  updateParts(dt);
  gameTime+=dt;updateDecay();
- let n=0;for(const ci of dirty){buildChunk(ci);dirty.delete(ci);if(++n>=6)break}
+ let n=0;for(const k of dirty){dirty.delete(k);const cy=k%4,ck=(k-cy)/4,cx=Math.floor(ck/131072)-65536,cz=ck%131072-65536;buildChunk(cx,cy,cz);if(++n>=8)break}
+ stream(dt,2,1);
  // Ziel & Abbau
  const h=locked&&!buildType?raycast(6):null;let info='';
  if(h){let tgt=null,nm='',sub='';
@@ -677,7 +701,7 @@ function frame(now){
  updateViewModel(dt);renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam)}
 
 // ---------- Koop (PeerJS/WebRTC; der Host ist maßgeblich, Mitspieler senden nur Aktionen) ----------
-const NET_PREFIX='satiscraft-v1-',PCOL=['#f29a2e','#3d9bd6','#5fcf6f','#d65fb4'],NMAX=W*H*D;
+const NET_PREFIX='satiscraft-v2-',PCOL=['#f29a2e','#3d9bd6','#5fcf6f','#d65fb4'];
 const net={role:'solo',id:0,peer:null,conns:new Map(),host:null,code:'',others:new Map(),queue:[],syncT:0,posT:0};
 let peerLib=null;
 function loadPeer(){if(window.Peer)return Promise.resolve();if(peerLib)return peerLib;
@@ -716,13 +740,13 @@ function hostRecv(conn,d){if(!conn.pid||!d||typeof d!=='object')return;
   if(typeof d.name==='string'){o.name=d.name.slice(0,16);conn.pname=o.name}return}
  if(d.t==='act'){applyAction(d);net.syncT=1}}
 // Aktionen von Mitspielern: alles prüfen, nichts ungeprüft übernehmen.
-function applyAction(d){const ok3=()=>isInt(d.x,0,W-1)&&isInt(d.y,1,H-1)&&isInt(d.z,0,D-1);
- if(d.a==='mine'){if(!ok3())return;const id=world[idx(d.x,d.y,d.z)];if(!id||id>=200||!BL[id]||BL[id].tier>tier)return;doMine(d.x,d.y,d.z,id)}
- else if(d.a==='place'){if(!ok3()||!isInt(d.slot,0,PLACE.length-1))return;const[it,id]=PLACE[d.slot];if(!inv[it]||world[idx(d.x,d.y,d.z)])return;add(it,-1);setBlock(d.x,d.y,d.z,id,true)}
+function applyAction(d){const ok3=()=>isXZ(d.x)&&isInt(d.y,1,H-1)&&isXZ(d.z);
+ if(d.a==='mine'){if(!ok3())return;const id=get(d.x,d.y,d.z);if(!id||id>=200||!BL[id]||BL[id].tier>tier)return;doMine(d.x,d.y,d.z,id)}
+ else if(d.a==='place'){if(!ok3()||!isInt(d.slot,0,PLACE.length-1))return;const[it,id]=PLACE[d.slot];if(!inv[it]||get(d.x,d.y,d.z))return;add(it,-1);setBlock(d.x,d.y,d.z,id,true)}
  else if(d.a==='build'){if(typeof d.type!=='string'||!own(BUILD,d.type)||!ok3()||!isInt(d.r,0,3))return;if(checkPlace(d.type,d.x,d.y,d.z,d.r,true))return;doBuild(d.type,d.x,d.y,d.z,d.r)}
- else if(d.a==='rm'){if(!isInt(d.i,0,NMAX-1))return;const t=belts.get(d.i)||machineAt.get(d.i);if(t)removeBuilding(t)}
- else if(d.a==='bdir'){if(!isInt(d.i,0,NMAX-1)||!isInt(d.d,0,3))return;const b=belts.get(d.i);if(b)setBeltDir(b,d.d)}
- else if(d.a==='panel'){if(!isInt(d.k,0,NMAX-1)||!PANEL_ACTS.includes(d.act))return;const m=machineAt.get(d.k);if(m&&(typeof d.arg==='string'||d.arg===undefined))panelAct(m,d.act,d.arg)}
+ else if(d.a==='rm'){if(!isKey(d.i))return;const t=belts.get(d.i)||machineAt.get(d.i);if(t)removeBuilding(t)}
+ else if(d.a==='bdir'){if(!isKey(d.i)||!isInt(d.d,0,3))return;const b=belts.get(d.i);if(b)setBeltDir(b,d.d)}
+ else if(d.a==='panel'){if(!isKey(d.k)||!PANEL_ACTS.includes(d.act))return;const m=machineAt.get(d.k);if(m&&(typeof d.arg==='string'||d.arg===undefined))panelAct(m,d.act,d.arg)}
  renderHotbar()}
 function syncMsg(){return{t:'sync',inv,tier,goal,
  m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1])]),
@@ -744,7 +768,7 @@ async function joinGame(){if(net.role!=='solo'||net.peer)return;const code=($('j
 function clientRecv(d){if(!d||typeof d!=='object')return;
  if(d.t==='full'){coopState('Der Raum ist voll (max. 4 Spieler).',true);try{net.peer.destroy()}catch(e){}net.peer=null;net.host=null;return}
  if(d.t==='welcome'){const sv=sanitize(d.save);if(!sv||!isInt(d.id,1,3))return;net.role='client';net.id=d.id;newWorld(sv.seed,sv);
-  if(sv.P){P.x=Math.min(W-1,Math.max(1,(sv.P.x||64)+1.5));P.z=sv.P.z||64;P.y=(sv.P.y||40)+.5}
+  if(sv.P){P.x=(sv.P.x??64)+1.5;P.z=sv.P.z??64;P.y=(sv.P.y??40)+.5}
   coopState('Verbunden als Spieler '+(net.id+1)+'. Inventar und Fortschritt teilt ihr euch.');updateCoopUI();toast('Koop beigetreten');return}
  if(net.role!=='client')return;
  if(d.t==='ev'){for(const e of arr(d.l))applyEvent(e);return}
@@ -753,15 +777,15 @@ function clientRecv(d){if(!d||typeof d!=='object')return;
   seen.add(p.id);setAvatar(p.id,p.x,p.y,p.z,p.yaw,typeof p.name==='string'?p.name.slice(0,16):'Spieler')}
   for(const id of[...avatars.keys()])if(!seen.has(id))removeAvatar(id);updateCoopUI()}}
 function applyEvent(e){if(!e||typeof e!=='object')return;
- if(e.t==='blk'&&isInt(e.i,0,NMAX-1)&&isInt(e.id,0,12)){const i=e.i;if(world[i]===MACH||world[i]===BELT)return;setBlock(i%W,Math.floor(i/(W*D)),Math.floor(i/W)%D,e.id,true);reserves.delete(i)}
- else if(e.t==='build'&&typeof e.type==='string'&&own(BUILD,e.type)&&isInt(e.x,0,W-1)&&isInt(e.y,1,H-1)&&isInt(e.z,0,D-1)&&isInt(e.r,0,3)){if(fits(e.type,e.x,e.y,e.z,e.r))createMachine(e.type,e.x,e.y,e.z,e.r)}
- else if(e.t==='rm'&&isInt(e.i,0,NMAX-1)){const t=belts.get(e.i)||machineAt.get(e.i);if(t)removeBuilding(t)}
- else if(e.t==='bdir'&&isInt(e.i,0,NMAX-1)&&isInt(e.d,0,3)){const b=belts.get(e.i);if(b)setBeltDir(b,e.d)}}
+ if(e.t==='blk'&&isKey(e.i)&&kY(e.i)<H&&isInt(e.id,0,12)){const i=e.i,cur=getI(i);if(cur===MACH||cur===BELT)return;setBlock(kX(i),kY(i),kZ(i),e.id,true);reserves.delete(i)}
+ else if(e.t==='build'&&typeof e.type==='string'&&own(BUILD,e.type)&&isXZ(e.x)&&isInt(e.y,1,H-1)&&isXZ(e.z)&&isInt(e.r,0,3)){if(fits(e.type,e.x,e.y,e.z,e.r))createMachine(e.type,e.x,e.y,e.z,e.r)}
+ else if(e.t==='rm'&&isKey(e.i)){const t=belts.get(e.i)||machineAt.get(e.i);if(t)removeBuilding(t)}
+ else if(e.t==='bdir'&&isKey(e.i)&&isInt(e.d,0,3)){const b=belts.get(e.i);if(b)setBeltDir(b,e.d)}}
 function applySync(d){inv=cleanBag(d.inv,1e9);if(isInt(d.tier,0,4))tier=d.tier;if(isInt(d.goal,0,GOALS.length-1))goal=d.goal;
- for(const r of arr(d.m)){if(!Array.isArray(r)||!isInt(r[0],0,NMAX-1))continue;const m=machineAt.get(r[0]);if(!m)continue;const def=BUILD[m.type];
+ for(const r of arr(d.m)){if(!Array.isArray(r)||!isKey(r[0]))continue;const m=machineAt.get(r[0]);if(!m)continue;const def=BUILD[m.type];
   m.inBuf=cleanBag(r[1],def.store||1e5);m.outBuf=cleanBag(r[2],1e5);if(isInt(r[3],0,9))m.recipe=r[3];if(isNum(r[4],0,1e4))m.t=r[4];m.working=!!r[5];
   m.tr=arr(r[6]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])).slice(0,def.bridge?def.d*3:4).map(x=>({item:x[0],t:isNum(x[1],0,1e4)?x[1]:0,pi:isInt(x[2],0,2)?x[2]:undefined}))}
- for(const r of arr(d.b)){if(!Array.isArray(r)||!isInt(r[0],0,NMAX-1))continue;const b=belts.get(r[0]);if(!b)continue;
+ for(const r of arr(d.b)){if(!Array.isArray(r)||!isKey(r[0]))continue;const b=belts.get(r[0]);if(!b)continue;
   b.items=arr(r[1]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])&&isNum(x[1],0,1)).slice(0,4).map(x=>({item:x[0],p:x[1]}))}
  renderHotbar()}
 function leaveCoop(msg){const wasClient=net.role==='client';
