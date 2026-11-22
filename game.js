@@ -823,7 +823,15 @@ function enemyModel(ty){const E=ETYPES[ty],g=new THREE.Group(),b=new THREE.Group
  const fg=new THREE.Mesh(BOX,M(0x5fcf6f,1));fg.scale.set(.88,.07,.03);fg.position.z=.01;bar.add(fg);g.add(bar);scene.add(g);return{g,b,l1,l2,bar,fg}}
 function spawnEnemy(ty,hp,id,s){const e={id:id||enemyId++,ty,s:s||0,hp,max:hp,ph:Math.random()*6,...enemyModel(ty)};enemies.push(e);return e}
 function removeEnemy(e,fx){scene.remove(e.g);const i=enemies.indexOf(e);if(i>=0)enemies.splice(i,1);if(fx&&e.pos)for(let k=0;k<4;k++)emit(new THREE.Vector3(e.pos.x,e.pos.y+.6,e.pos.z),'dark')}
-function startWave(){td.wave++;spawnQ=waveList(td.wave).map((ty,i)=>({ty,t:i*1.6}));waveT=0;toast('Angriff! Welle '+td.wave+' – '+spawnQ.length+' Gegner')}
+// Countdown 30 s vor einer Welle, rechts groß eingeblendet
+let waveAlarm=0,wtLast='';
+function updateWaveTimer(dt){const el=$('wavetimer');let html='',cls='';
+ const left=(NIGHT-td.t)*DAYLEN;
+ if(td.path&&td.every>0&&td.day%td.every===0&&!isNight(td.t)&&left<=30){const s=Math.ceil(left);
+  html=`<small>Angriff in</small><b>0:${String(s).padStart(2,'0')}</b><small>Welle ${td.wave+1}</small>`;cls=s<=10?'on hot':'on';waveAlarm=0}
+ else if(waveAlarm>0){waveAlarm-=dt;html=`<b>Angriff!</b><small>Welle ${td.wave}</small>`;cls='on hot'}
+ const key=cls+html;if(key!==wtLast){wtLast=key;el.innerHTML=html;el.className=cls}}
+function startWave(){waveAlarm=4;td.wave++;spawnQ=waveList(td.wave).map((ty,i)=>({ty,t:i*1.6}));waveT=0;toast('Angriff! Welle '+td.wave+' – '+spawnQ.length+' Gegner')}
 function baseFallen(){for(const e of[...enemies])removeEnemy(e,true);spawnQ=[];td.hp=TOWER_HP/2;td.defeats++;toast('Die Basis ist gefallen! Der Turm steht wieder mit halber Kraft.')}
 function damageEnemy(e,d){e.hp-=d;if(e.pos)emit(new THREE.Vector3(e.pos.x,e.pos.y+.8,e.pos.z),'spark');
  if(e.hp<=0){removeEnemy(e,true);td.kills++;const r=['iron_ore','copper_ore','coal'][Math.floor(Math.random()*3)];add(r,1+(Math.random()<.3?1:0));renderHotbar()}}
@@ -853,10 +861,12 @@ function updateEnemies(dt,client){const L=route.length-1;for(const e of[...enemi
 function tdUpdate(dt){const client=net.role==='client',wasN=isNight(td.t);td.t+=dt/DAYLEN;if(td.t>=1){td.t-=1;td.day++;toast('Tag '+td.day+' beginnt')}
  applyLight();if(portal)portal.userData.pl.material.opacity=.45+Math.sin(time*3)*.15;
  if(!td.path)return;const nowN=isNight(td.t);
+ if(client&&nowN&&!wasN&&td.every>0&&td.day%td.every===0)waveAlarm=4;
  if(!client){if(nowN&&!wasN&&td.every>0&&td.day%td.every===0)startWave();
   if(spawnQ.length){waveT+=dt;while(spawnQ.length&&spawnQ[0].t<=waveT){const q=spawnQ.shift();spawnEnemy(q.ty,Math.round(ETYPES[q.ty].hp*hpMul(td.wave)))}}
   if(!nowN&&!enemies.length)td.hp=Math.min(TOWER_HP,td.hp+dt*1.2)}
  updateEnemies(dt,client);updateTurrets(dt,client);updateShots(dt,client);
+ updateWaveTimer(dt);
  if(!client&&td.hp<=0)baseFallen()}
 function nextAttackText(){if(!td.path)return'';if(td.every<=0)return'Angriffe aus';if(enemies.length||spawnQ.length)return'Angriff läuft: '+(enemies.length+spawnQ.length)+' Gegner';
  let d=td.day;if(isNight(td.t)||d%td.every!==0){d=d+1;while(d%td.every!==0)d++}const n=d-td.day;return'Nächster Angriff: '+(n===0?'heute Nacht':n===1?'morgen Nacht':'in '+n+' Tagen')+' (Welle '+(td.wave+1)+')'}

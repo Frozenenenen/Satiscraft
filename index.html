@@ -41,6 +41,10 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 #coopsteps{list-style:none;margin:6px 0 0;padding:0;font-size:14px}#coopsteps li{padding:2px 0}#coopsteps .ok{color:var(--ok)}#coopsteps .bad{color:var(--bad);font-weight:700}#coopsteps .run{color:var(--acc)}#coopsteps .todo{color:#6b737c}#coopsteps .why{color:var(--ink);background:#3a1f1b;border-left:3px solid var(--bad);padding:8px 10px;margin-top:6px;border-radius:4px}
 #perf{position:fixed;z-index:22;left:10px;top:140px;display:none;background:#121519d9;border:1px solid #ffffff1f;border-radius:6px;padding:6px 9px;font:12px/1.35 ui-monospace,Consolas,monospace;color:#d8dde3;pointer-events:none;max-width:300px}
 #perf .pf b{font-size:18px}#perf .ok b{color:var(--ok)}#perf .warn b{color:var(--acc)}#perf .bad b{color:var(--bad)}#perf table{border-collapse:collapse;margin:4px 0;width:100%}#perf td{padding:0 4px 0 0;white-space:nowrap}#perf .r{text-align:right}#perf i{display:inline-block;height:7px;background:var(--acc);border-radius:2px}#perf .sum td{border-top:1px solid #ffffff2a}#perf canvas{display:block;margin:4px 0;background:#0007}#perf .tip{margin-top:4px;padding:4px 6px;border-left:3px solid var(--acc);background:#3a2f16;white-space:normal}#perf .mut{color:#8d959e}
+#wavetimer{position:fixed;z-index:21;right:24px;top:50%;transform:translate(140%,-50%);transition:transform .35s cubic-bezier(.2,1.4,.4,1);background:#1c1013e6;border:3px solid var(--bad);border-radius:12px;padding:12px 22px;text-align:center;pointer-events:none;color:#fff;box-shadow:0 10px 40px #000a;min-width:170px}
+#wavetimer.on{transform:translate(0,-50%)}#wavetimer b{display:block;font-size:64px;line-height:1.05;font-variant-numeric:tabular-nums;color:#ffd7d2}#wavetimer small{display:block;font-size:16px;color:#ffb3aa;text-transform:uppercase;letter-spacing:.08em}
+#wavetimer.hot{animation:wtp .5s ease-in-out infinite alternate}@keyframes wtp{to{box-shadow:0 0 40px #ef5a4c;border-color:#ff8a7d}}
+@media (prefers-reduced-motion:reduce){#wavetimer{transition:none}#wavetimer.hot{animation:none}}
 #joinreq{position:fixed;z-index:25;left:50%;top:98px;transform:translateX(-50%);display:none;background:#1f2329;border:2px solid var(--acc);border-radius:8px;padding:8px 12px;box-shadow:0 10px 30px #000a}
 #joinreq .jr{display:flex;gap:10px;align-items:center;padding:4px 0}
 #tdhud{left:50%;top:66px;transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:#16191dd9;padding:4px 12px;border-radius:4px;font-size:13px;white-space:nowrap}
@@ -118,6 +122,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="tdhud" class="hud"></div>
 <div id="joinreq" role="alert"></div>
 <div id="perf" aria-live="off"></div>
+<div id="wavetimer" role="timer" aria-live="polite"></div>
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
 <div id="coophud" class="hud"></div>
@@ -170,6 +175,6 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=39"></script>
+<script src="game.js?v=40"></script>
 </body>
 </html>
