@@ -41,6 +41,12 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Meilensteine:** Oben links steht jeweils der nächste Schritt.
 - **Speichern:** Der Spielstand wird im `localStorage` des Browsers gespeichert.
 
+## Basis, Barken und Kompass
+
+- **Basisturm:** In einem neuen Spiel steht neben dem Startpunkt der Basisturm (3×3 Felder, 15 Blöcke hoch). Er ist unzerstörbar und muss verteidigt werden.
+- **Barken:** Barken baust du im Baumenü unter Werkstatt. Es sind Wegpunkte mit Lichtsäule. Im Fenster (E) kannst du sie benennen.
+- **Kompass:** Oben am Bildrand zeigt er die Himmelsrichtungen (Norden = Blickrichtung beim Start) sowie Marker mit Entfernung zur Basis und zu allen Barken.
+
 ## Einstellungen
 
 Im Pause-Menü (Esc) stellst du die Sichtweite ein: 4, 6, 8, 10, 12 oder 16 Chunks (64–256 m). Mehr Sichtweite braucht mehr Grafikleistung. Neue Gebiete werden mit einem festen Zeitbudget pro Frame geladen.
