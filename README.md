@@ -29,7 +29,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Endlose Welt:** Die Welt wird wie in Minecraft prozedural in Chunks (16×64×16) erzeugt, während du dich bewegst. Derselbe Seed ergibt immer dieselbe Welt, auch an den Chunk-Grenzen. Gespeichert werden nur deine Änderungen. Spielstände aus der Version mit fester 128×128-Welt werden automatisch umgerechnet.
 
 - **Werkzeugstufen:** Hand → Holz- → Stein- → Eisen- → Stahlspitzhacke. Jede Stufe schaltet härtere Erze frei: Stein und Kohle, dann Kupfer und Eisen, dann Gold, zuletzt Titan.
-- **Miner:** Setz ihn auf ein Erzvorkommen oder auf Stein. Das Abbauziel (Erze oder Stein) wählt er automatisch; im Maschinenfenster (E) kannst du es umstellen. Jeder Erzblock darunter enthält 40 Einheiten. Der Miner baut den Bereich Schicht für Schicht ab.
+- **Miner:** Setz ihn auf ein Erzvorkommen oder auf Stein. Das Abbauziel (Erze oder Stein) wählt er beim Aufstellen automatisch; danach bleibt es, bis du es im Maschinenfenster (E) umstellst. Jeder Erzblock darunter enthält 40 Einheiten. Der Miner baut den Bereich Schicht für Schicht ab.
 - **Gebäude:** Sie brauchen eine ebene, freigeräumte Fläche, je nach Gebäude 1×1, 2×2, 2×3 oder 3×3.
 - **Anschlüsse:** Grüne Pfeile sind Eingänge, orange Pfeile sind Ausgänge.
 - **Splitter und Merger:** Der Splitter (1 Eingang, 3 Ausgänge) verteilt reihum auf alle freien Ausgänge. Der Merger (3 Eingänge, 1 Ausgang) nimmt reihum von jedem Eingang. Beide kannst du direkt auf ein liegendes Band setzen: Das Band wird ersetzt, und die Laufrichtung wird übernommen.

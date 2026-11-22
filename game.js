@@ -305,7 +305,8 @@ function createMachine(type,ox,oy,oz,rot,data){
  const mp=l=>Array.isArray(l)?l.map(([lx,lz,ld])=>{const[a,b]=toW(def,rot,lx,lz);return{x:ox+a,y:oy,z:oz+b,dir:(ld+rot)%4}}):[];
  m.ins=mp(def.ins);m.outs=mp(def.outs);
  if(def.router&&data){for(const k in m.outBuf)for(let i=0;i<m.outBuf[k]&&m.tr.length<4;i++)m.tr.push({item:k});m.outBuf={}}
- if(def.miner&&m.recipe!==1){m.recipe=0;let ore=false;minerArea(m,()=>{ore=true;return true});if(!ore)m.recipe=1}
+ // Abbauziel nur beim Aufstellen automatisch wählen; geladene Miner behalten ihre gespeicherte Einstellung.
+ if(def.miner&&!data){m.recipe=0;let ore=false;minerArea(m,()=>{ore=true;return true});if(!ore)m.recipe=1}
  const{g,a}=model(type);g.position.set(ox+rw/2,oy,oz+rd/2);g.rotation.y=-rot*Math.PI/2;scene.add(g);g.updateMatrixWorld(true);m.g=g;m.a=a;m.pulse=0;m.emitT=Math.random()*.3;machines.push(m);if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return m}
 function removeBuilding(t){
  if(net.role==='host')netEmit({t:'rm',i:keyOf(t)});
