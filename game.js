@@ -746,6 +746,10 @@ function netTick(dt){
  updateAvatars(dt)}
 $('hostb').onclick=()=>{saveName();hostGame()};$('joinb').onclick=()=>{saveName();joinGame()};$('leaveb').onclick=()=>leaveCoop();
 $('joincode').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){saveName();joinGame()}});$('pname').addEventListener('keydown',e=>e.stopPropagation());
+// Hintergrund-Tabs bekommen kein requestAnimationFrame mehr: im Koop trotzdem weiterrechnen (Browser erlauben ~1×/s).
+setInterval(()=>{if(!document.hidden||net.role==='solo')return;
+ for(let i=0;i<10;i++){if(slopesDirty)updateSlopes();for(const m of machines)tickMachine(m,.1);updateBelts(.1)}
+ gameTime+=1;updateDecay();netTick(1)},1000);
 function saveName(){try{localStorage.setItem('satiscraft-name',myName())}catch(e){}}
 try{$('pname').value=(localStorage.getItem('satiscraft-name')||'').slice(0,16)}catch(e){}
 
