@@ -631,7 +631,7 @@ function renderPanel(){
   else if(def.beacon){h+=`<p class="mut">Wegpunkt im Kompass. Gib der Barke einen Namen, um sie von anderen zu unterscheiden.</p>
    <div class="crow"><input id="bname" maxlength="24" value="${esc(m.name)}" aria-label="Name der Barke" autocomplete="off"><button class="b" data-act="rename">Umbenennen</button></div>
    <p class="mut">Position: ${m.x}, ${m.y}, ${m.z}</p>`}
-  else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>${td.path?(waveActive()?`<p><b>Welle ${td.wave} läuft</b> – noch ${enemies.length+spawnQ.length} Gegner.</p>`:`<div class="btns"><button class="b danger" data-act="wave">Welle ${td.wave+1} jetzt starten</button></div><p class="mut">Startet sofort. Der normale Zeitplan läuft weiter, die Welle danach wird stärker.</p>`):''}`}
+  else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>${td.path?(waveActive()?`<p><b>Welle ${td.wave} läuft</b> – noch ${enemies.length+spawnQ.length} Gegner.</p>`:`<div class="btns"><button class="b danger" data-act="wave">Welle ${td.wave+1} jetzt starten</button></div><p class="mut">Startet sofort. Der normale Zeitplan läuft weiter, die Welle danach wird stärker.</p>`)+`<h3>Angriffe alle</h3><div class="recs">${WAVE_OPTS.map(n=>`<button class="rec ${n===td.every?'on':''}" data-act="every:${n}">${n?n+(n>1?' Tage':' Tag'):'Aus'}</button>`).join('')}</div><p class="mut">${esc(nextAttackText())}. Seltener = entspannter, häufiger = mehr Beute.</p>`:''}`}
   else if(m.type==='sorter'){const f=Array.isArray(m.filter)?m.filter:[];h+=`<p>Gewählte Items laufen <b>nach vorne</b>, alle anderen abwechselnd zu den <b>Seiten</b>. Ohne Auswahl geht alles zur Seite.</p><p class="mut">Status: ${esc(m.status||'')}</p><h3>Nach vorne (${f.length})</h3><div class="recs"><button class="rec ${f.length?'':'on'}" data-act="filter:off">Nichts</button>${Object.keys(ITEMS).map(k=>`<button class="rec ${f.includes(k)?'on':''}" data-act="filter:${k}">${ITEMS[k][0]}</button>`).join('')}</div>`}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>
    <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3>${m.outs.length>1?'<p class="mut">Links/rechts gesehen, wenn du vor den orangen Pfeilen stehst und auf das Lager schaust. „Alles“ gibt alles aus, was kein anderer Ausgang ausgibt.</p>':''}<p class="mut">Mehrere Items pro Ausgang wählbar (nochmal klicken = abwählen), sie kommen abwechselnd heraus.</p>
@@ -660,9 +660,10 @@ $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
  if(m&&PANEL_ACTS.includes(act)){if(net.role==='client')netSend({t:'act',a:'panel',k:m.cells[0],act,arg});else panelAct(m,act,arg)}
  renderPanel();renderHotbar()});
-const PANEL_ACTS=['filter','wave','rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
+const PANEL_ACTS=['every','filter','wave','rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
 function panelAct(m,act,arg){
  if(act==='filter'){if(m.type!=='sorter'||typeof arg!=='string')return;if(arg==='off'){m.filter=null;return}if(!own(ITEMS,arg))return;const c=Array.isArray(m.filter)?m.filter:[];const l=c.includes(arg)?c.filter(x=>x!==arg):[...c,arg].slice(0,12);m.filter=l.length?l:null;return}
+ if(act==='every'){const n=+arg;if(BUILD[m.type].fixed&&WAVE_OPTS.includes(n)){td.every=n;try{localStorage.setItem('satiscraft-every',String(n))}catch(e){}toast(n?'Angriffe alle '+n+(n>1?' Tage':' Tag'):'Angriffe ausgeschaltet')}return}
  if(act==='wave'){if(BUILD[m.type].fixed&&td.path&&!waveActive())startWave();return}
  if(act==='craft'){const t=+arg;if(m.type==='workbench'&&TOOLREC[t]&&has(TOOLREC[t])&&tier===t-1){for(const k in TOOLREC[t])add(k,-TOOLREC[t][k]);tier=t;m.pulse=1.4;toast(TOOLS[t].n+' hergestellt')}}
  if(act==='recipe'){const i=+arg,n=BUILD[m.type].miner?2:RECIPES[m.type]?RECIPES[m.type].length:0;if(isInt(i,0,n-1)&&i!==m.recipe){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};m.recipe=i;m.t=0}}
@@ -790,7 +791,7 @@ function clearFor(type,ox,oy,oz,rot){const cells=type==='belt'?[{x:ox,y:oy,z:oz}
  for(const c of cells)if(get(c.x,c.y,c.z))setBlock(c.x,c.y,c.z,0,true);return true}
 function fits(type,ox,oy,oz,rot){if(type==='belt')return isXZ(ox)&&isXZ(oz)&&oy>=1&&oy<H&&!get(ox,oy,oz);
  return cellsOf(BUILD[type],ox,oy,oz,rot).every(c=>isXZ(c.x)&&isXZ(c.z)&&c.y>=1&&c.y<H&&!get(c.x,c.y,c.z))}
-function clearAll(){decay.clear();pathAirCols.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
+function clearAll(){decay.clear();for(const id of[...drops.keys()])removeDrop(id);pathAirCols.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
  for(const c of cols.values())hideCol(c);cols.clear();changesByCol.clear();featCache.clear();reserves.clear();dirty.clear();buildType=null}
 function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:0,hp:TOWER_HP,every:prefEvery(),defeats:0,kills:0,path:null};inv={};tier=0;gadgets={radar:false};stats={delivered:0,produced:{}};goal=0;
  P.x=64.5;P.z=64.5;P.y=surfaceH(64,64)+1;P.vy=0;P.yaw=0;P.pitch=-.15;
@@ -893,6 +894,29 @@ function enemyModel(ty){const E=ETYPES[ty],g=new THREE.Group(),b=new THREE.Group
  const bar=new THREE.Group();bar.position.y=1.95*s;const bg=new THREE.Mesh(BOX,M(0x23272c));bg.scale.set(.9,.1,.02);bar.add(bg);
  const fg=new THREE.Mesh(BOX,M(0x5fcf6f,1));fg.scale.set(.88,.07,.03);fg.position.z=.01;bar.add(fg);g.add(bar);scene.add(g);return{g,b,l1,l2,bar,fg}}
 function spawnEnemy(ty,hp,id,s){const e={id:id||enemyId++,ty,s:s||0,hp,max:hp,ph:Math.random()*6,...enemyModel(ty)};enemies.push(e);return e}
+// ---------- Beute: Gegner lassen Items fallen, Einsammeln durch Darüberlaufen ----------
+const LOOT={walker:[[2,['stone','coal','iron_ore','copper_ore']]],brute:[[3,['iron_bar','copper_bar','steel','coal','iron_plate']]],runner:[[2,['wire','screw','gold_ore','rod']]]};
+const LATE=['quartz_ore','bauxite','titan_ore','circuit','alu_bar'];
+const drops=new Map();let dropId=1;const dropMats={};
+function dropMesh(d){const c=ITEMS[d.item][1];const mat=dropMats[c]||(dropMats[c]=new THREE.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.25}));
+ const me=new THREE.Mesh(BOX,mat);me.scale.setScalar(.28+Math.min(.12,d.n*.02));me.position.set(d.x,d.y+.3,d.z);scene.add(me);d.g=me;return d}
+function spawnDrop(item,n,x,y,z,id){if(drops.size>=150){const old=drops.values().next().value;removeDrop(old.id)}
+ const d=dropMesh({id:id||dropId++,item,n,x:x+(Math.random()-.5)*1.2,y,z:z+(Math.random()-.5)*1.2,life:300,ph:Math.random()*6});drops.set(d.id,d);return d}
+function removeDrop(id){const d=drops.get(id);if(!d)return;scene.remove(d.g);drops.delete(id)}
+function dropLoot(e){if(net.role==='client')return;const w=td.wave||1;
+ for(const[rolls,pool]of LOOT[e.ty]||LOOT.walker){for(let i=0;i<rolls;i++)if(Math.random()<.8)spawnDrop(pool[Math.floor(Math.random()*pool.length)],1+Math.floor(Math.random()*(1+w/4)),e.pos.x,e.pos.y,e.pos.z)}
+ if(w>=6&&Math.random()<Math.min(.6,.1+w*.03))spawnDrop(LATE[Math.floor(Math.random()*LATE.length)],1+Math.floor(Math.random()*2),e.pos.x,e.pos.y,e.pos.z)}
+let pickMsg={},pickT=0;
+function updateDrops(dt){for(const d of drops.values()){d.g.rotation.y+=dt*2;d.g.position.y=d.y+.3+Math.sin(time*3+d.ph)*.08;
+  if(net.role==='client')continue;d.life-=dt;if(d.life<=0){removeDrop(d.id);continue}
+  const near=(x,y,z)=>Math.hypot(x-d.x,z-d.z)<2.2&&Math.abs(y-d.y)<2.5;
+  let who=near(P.x,P.y,P.z)?'me':null;if(!who)for(const o of net.others.values())if(isNum(o.x,-LIM,LIM)&&near(o.x,o.y,o.z)){who='other';break}
+  if(who){add(d.item,d.n);if(who==='me')pickMsg[d.item]=(pickMsg[d.item]||0)+d.n;removeDrop(d.id);renderHotbar();net.syncT=1}}
+ if(Object.keys(pickMsg).length&&(pickT-=dt)<=0){pickT=.8;toast('Beute: '+Object.entries(pickMsg).map(([k,n])=>'+'+n+' '+ITEMS[k][0]).join(', '));pickMsg={}}}
+function applyDrops(l){if(!Array.isArray(l))return;const seen=new Set();
+ for(const q of l.slice(0,150)){if(!Array.isArray(q))continue;const[id,item,n,x,y,z]=q;if(!isInt(id,1,1e9)||typeof item!=='string'||!own(ITEMS,item)||!isInt(n,1,999)||![x,y,z].every(v=>isNum(v,-LIM,LIM)))continue;
+  seen.add(id);if(!drops.has(id)){const d=dropMesh({id,item,n,x,y,z,life:300,ph:id%6});drops.set(id,d)}}
+ for(const id of[...drops.keys()])if(!seen.has(id))removeDrop(id)}
 function removeEnemy(e,fx){scene.remove(e.g);const i=enemies.indexOf(e);if(i>=0)enemies.splice(i,1);if(fx&&e.pos)for(let k=0;k<4;k++)emit(new THREE.Vector3(e.pos.x,e.pos.y+.6,e.pos.z),'dark')}
 // Countdown 30 s vor einer Welle, rechts groß eingeblendet
 let waveAlarm=0,wtLast='';
@@ -906,7 +930,7 @@ const waveActive=()=>enemies.length>0||spawnQ.length>0;
 function startWave(){waveAlarm=4;td.wave++;spawnQ=waveList(td.wave).map((ty,i)=>({ty,t:i*1.6}));waveT=0;toast('Angriff! Welle '+td.wave+' – '+spawnQ.length+' Gegner')}
 function baseFallen(){for(const e of[...enemies])removeEnemy(e,true);spawnQ=[];td.hp=TOWER_HP/2;td.defeats++;toast('Die Basis ist gefallen! Der Turm steht wieder mit halber Kraft.')}
 function damageEnemy(e,d){e.hp-=d;if(e.pos)emit(new THREE.Vector3(e.pos.x,e.pos.y+.8,e.pos.z),'spark');
- if(e.hp<=0){removeEnemy(e,true);td.kills++;const r=['iron_ore','copper_ore','coal'][Math.floor(Math.random()*3)];add(r,1+(Math.random()<.3?1:0));renderHotbar()}}
+ if(e.hp<=0){if(e.pos)dropLoot(e);removeEnemy(e,true);td.kills++}}
 const shotMat={tesla:new THREE.MeshBasicMaterial({color:0x8fe3ff,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}),shell:new THREE.MeshLambertMaterial({color:0x3a3d33}),blaster:new THREE.MeshBasicMaterial({color:0x6bffb0,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}),bolt:new THREE.MeshLambertMaterial({color:0x8a5a2b}),bullet:new THREE.MeshBasicMaterial({color:0xffd24a}),laser:new THREE.MeshBasicMaterial({color:0xff3b6b,transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false})};
 function fire(m,e,T){const mz=m.a.muzzle||[0,1,0],from={x:m.x+m.rw/2,y:m.y+mz[1],z:m.z+m.rd/2},p=e.pos,dist=Math.hypot(p.x-from.x,p.y+.8-from.y,p.z-from.z);
  if(T.chain){let last=e;const hit=[e];while(hit.length<T.chain){let nb=null,bd=6;for(const q of enemies)if(q.pos&&!hit.includes(q)){const d=Math.hypot(q.pos.x-last.pos.x,q.pos.z-last.pos.z);if(d<bd){bd=d;nb=q}}if(!nb)break;hit.push(nb);last=nb}
@@ -950,7 +974,7 @@ function tdUpdate(dt){const client=net.role==='client',wasN=isNight(td.t);td.t+=
  if(!client){if(nowN&&!wasN&&td.every>0&&td.day%td.every===0)startWave();
   if(spawnQ.length){waveT+=dt;while(spawnQ.length&&spawnQ[0].t<=waveT){const q=spawnQ.shift();spawnEnemy(q.ty,Math.round(ETYPES[q.ty].hp*hpMul(td.wave)))}}
   if(!nowN&&!enemies.length)td.hp=Math.min(TOWER_HP,td.hp+dt*1.2)}
- updateEnemies(dt,client);updateTurrets(dt,client);updateShots(dt,client);
+ updateEnemies(dt,client);updateTurrets(dt,client);updateShots(dt,client);updateDrops(dt);
  updateWaveTimer(dt);
  if(!client&&td.hp<=0)baseFallen()}
 function nextAttackText(){if(!td.path)return'';if(td.every<=0)return'Angriffe aus';if(enemies.length||spawnQ.length)return'Angriff läuft: '+(enemies.length+spawnQ.length)+' Gegner';
@@ -1188,7 +1212,7 @@ function renderJoinReqs(){const el=$('joinreq');if(!joinReqs.length){el.style.di
 $('joinreq').addEventListener('click',e=>{const b=e.target.closest('[data-jr]');if(!b)return;const[i,ok]=b.dataset.jr.split(':');const c=joinReqs[+i];if(c)decideJoin(c,ok==='1')});
 setInterval(()=>{for(const c of[...joinReqs])if(Date.now()-c.reqT>60000)decideJoin(c,false);if(joinReqs.length)renderJoinReqs()},1000);
 function hostRecv(conn,d){if(!conn.pid||!d||typeof d!=='object')return;
- if(d.t==='pos'){const o=net.others.get(conn.pid);if(!o)return;if([d.x,d.y,d.z,d.yaw].every(v=>isNum(v,-1e4,1e4))){o.x=d.x;o.y=d.y;o.z=d.z;o.yaw=d.yaw}
+ if(d.t==='pos'){const o=net.others.get(conn.pid);if(!o)return;if([d.x,d.y,d.z,d.yaw].every(v=>isNum(v,-LIM,LIM))){o.x=d.x;o.y=d.y;o.z=d.z;o.yaw=d.yaw}
   if(typeof d.name==='string'){o.name=d.name.slice(0,16);conn.pname=o.name}return}
  if(d.t==='act'){applyAction(d);net.syncT=1}}
 // Aktionen von Mitspielern: alles prüfen, nichts ungeprüft übernehmen.
@@ -1201,7 +1225,7 @@ function applyAction(d){const ok3=()=>isXZ(d.x)&&isInt(d.y,1,H-1)&&isXZ(d.z);
  else if(d.a==='bdir'){if(!isKey(d.i)||!isInt(d.d,0,3))return;const b=belts.get(d.i);if(b)setBeltDir(b,d.d)}
  else if(d.a==='panel'){if(!isKey(d.k)||!PANEL_ACTS.includes(d.act))return;const m=machineAt.get(d.k);if(m&&(typeof d.arg==='string'||d.arg===undefined))panelAct(m,d.act,d.arg)}
  renderHotbar()}
-function syncMsg(){return{t:'sync',inv,tier,goal,gadgets,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,kills:td.kills,defeats:td.defeats,en:enemies.map(e=>[e.id,e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)])},
+function syncMsg(){return{t:'sync',dr:[...drops.values()].map(d=>[d.id,d.item,d.n,+d.x.toFixed(2),+d.y.toFixed(2),+d.z.toFixed(2)]),inv,tier,goal,gadgets,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,kills:td.kills,defeats:td.defeats,en:enemies.map(e=>[e.id,e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)])},
  m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1]),m.disp||0,m.name||0,m.ps||0,m.filter||0]),
  b:[...belts.entries()].map(([k,b])=>[k,b.items.map(i=>[i.item,+i.p.toFixed(2)])])}}
 // --- Mitspieler ---
@@ -1251,7 +1275,7 @@ function applyEvent(e){if(!e||typeof e!=='object')return;
  else if(e.t==='build'&&typeof e.type==='string'&&own(BUILD,e.type)&&isXZ(e.x)&&isInt(e.y,1,H-1)&&isXZ(e.z)&&isInt(e.r,0,3)){if(fits(e.type,e.x,e.y,e.z,e.r))createMachine(e.type,e.x,e.y,e.z,e.r)}
  else if(e.t==='rm'&&isKey(e.i)){const t=belts.get(e.i)||machineAt.get(e.i);if(t)removeBuilding(t)}
  else if(e.t==='bdir'&&isKey(e.i)&&isInt(e.d,0,3)){const b=belts.get(e.i);if(b)setBeltDir(b,e.d)}}
-function applySync(d){applyTdSync(d.td);inv=cleanBag(d.inv,1e9);gadgets=cleanGadgets(d.gadgets);updateBeltSpeed();if(isInt(d.tier,0,5))tier=d.tier;if(isInt(d.goal,0,GOALS.length-1))goal=d.goal;
+function applySync(d){applyTdSync(d.td);applyDrops(d.dr);inv=cleanBag(d.inv,1e9);gadgets=cleanGadgets(d.gadgets);updateBeltSpeed();if(isInt(d.tier,0,5))tier=d.tier;if(isInt(d.goal,0,GOALS.length-1))goal=d.goal;
  for(const r of arr(d.m)){if(!Array.isArray(r)||!isKey(r[0]))continue;const m=machineAt.get(r[0]);if(!m)continue;const def=BUILD[m.type];
   m.inBuf=cleanBag(r[1],def.store||1e5);m.outBuf=cleanBag(r[2],1e5);if(isInt(r[3],0,9))m.recipe=r[3];if(isNum(r[4],0,1e4))m.t=r[4];m.working=!!r[5];
   if(def.beacon&&typeof r[8]==='string')m.name=cleanName(r[8]);
@@ -1307,11 +1331,9 @@ function prefEvery(){try{const v=+localStorage.getItem('satiscraft-every');retur
 function setupDefense(){if(td.path)return;const fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw),ox=Math.floor(P.x+fx*8)-1,oz=Math.floor(P.z+fz*8)-1;
  for(let x=ox;x<ox+3;x++)for(let z=oz;z<oz+3;z++)for(let y=0;y<H;y++){const v=get(x,y,z);if(v===MACH||v===BELT)return toast('Dort steht schon etwas – such dir eine freie Stelle')}
  let tw=machines.find(m=>m.type==='tower');if(!tw){placeBaseTower(ox,oz);tw=machines.find(m=>m.type==='tower')}if(tw){makePath(tw);toast('Basis und Angriffspfad eingerichtet');renderSettings()}}
-function renderSettings(){$('waveopts').innerHTML=WAVE_OPTS.map(n=>`<button class="rec ${n===td.every?'on':''}" data-every="${n}" ${net.role==='client'?'disabled':''}>${n?n+(n>1?' Tage':' Tag'):'Aus'}</button>`).join('');
- $('tdsetup').innerHTML=td.path?'':`Dieser Spielstand hat noch keine Basis mit Angriffspfad. <button class="b sec" id="tdsetupb" ${net.role!=='solo'?'disabled':''}>Turmverteidigung hier einrichten</button> <span class="mut">(Turm 8 Blöcke vor dir, Pfad nach Norden)</span>`;
+function renderSettings(){ $('tdsetup').innerHTML=td.path?'':`Dieser Spielstand hat noch keine Basis mit Angriffspfad. <button class="b sec" id="tdsetupb" ${net.role!=='solo'?'disabled':''}>Turmverteidigung hier einrichten</button> <span class="mut">(Turm 8 Blöcke vor dir, Pfad nach Norden)</span>`;
  const sb=$('tdsetupb');if(sb)sb.onclick=()=>{setupDefense();resume()};
  $('rdopts').innerHTML=RD_OPTS.map(n=>`<button class="rec ${n===RD?'on':''}" data-rd="${n}">${n} Chunks <span class="mut">(${n*16} m)</span></button>`).join('')}
-$('waveopts').addEventListener('click',e=>{const b=e.target.closest('[data-every]');if(!b||b.disabled)return;td.every=+b.dataset.every;try{localStorage.setItem('satiscraft-every',String(td.every))}catch(e){}renderSettings();toast(td.every?'Angriffe alle '+td.every+' Tage':'Angriffe ausgeschaltet')});
 $('rdopts').addEventListener('click',e=>{const b=e.target.closest('[data-rd]');if(!b)return;setViewDist(+b.dataset.rd);renderSettings();toast('Sichtweite: '+RD+' Chunks')});
 renderSettings();
 function saveName(){try{localStorage.setItem('satiscraft-name',myName())}catch(e){}}

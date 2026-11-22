@@ -61,18 +61,20 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 ## Turmverteidigung
 
 - **Tag und Nacht:** Ein Tag dauert 12 Minuten, die Nacht davon etwa 4 Minuten. Uhrzeit, Tag und Zustand der Basis siehst du unter dem Kompass.
-- **Angriffe:** Alle x Tage (Einstellungen: Aus, 1, 2, 3, 5 oder 7) greifen zur Nacht Gegner an. Sie kommen aus einem Portal im Norden und laufen über einen festen, unzerstörbaren Pfad zum Basisturm.
+- **Angriffe:** Alle x Tage (am Basisturm einstellbar: Aus, 1, 2, 3, 5 oder 7) greifen zur Nacht Gegner an. Sie kommen aus einem Portal im Norden und laufen über einen festen, unzerstörbaren Pfad zum Basisturm.
   - Mit jeder Welle kommen mehr Gegner, und sie halten mehr aus.
   - Läufer greifen ab Welle 1 an, Brocken ab Welle 3, Flitzer ab Welle 5.
   - 30 s vor einer Welle erscheint rechts ein großer Countdown, in den letzten 10 s pulsiert er.
-  - Am Turm (E) startest du die nächste Welle auf Knopfdruck sofort, solange keine läuft.
+  - Am Turm (E) stellst du ein, wie oft Angriffe kommen, und startest die nächste Welle auf Knopfdruck sofort, solange keine läuft.
 - **Verteidigung** (Baumenü → Verteidigung):
   - Die Balliste braucht keine Munition.
   - Der Geschützturm braucht Munition. Der Konstruktor macht aus 1 Eisenstange 6 Munition, du lieferst sie per Band oder legst sie mit E ein.
   - Der Laserturm ist spät baubar und braucht keine Munition.
   - Der Mörser schießt Granaten mit Flächenschaden, der Teslaturm trifft per Kettenblitz bis zu 4 Gegner.
   - Auf und über dem Pfad kann nicht gebaut werden.
-- **Basis:** Der Turm hat 1000 Lebenspunkte und regeneriert sich tagsüber. Fällt er, verschwinden die Gegner, und er steht mit halber Kraft wieder. Besiegte Gegner hinterlassen etwas Erz.
+- **Basis:** Der Turm hat 1000 Lebenspunkte und regeneriert sich tagsüber. Fällt er, verschwinden die Gegner, und er steht mit halber Kraft wieder. 
+- **Beute:** Besiegte Gegner lassen Items fallen. Läufer lassen Stein, Kohle und Erz fallen, Brocken Barren, Stahl und Platten, Flitzer Draht, Schrauben, Stangen und Gold. Ab Welle 6 gibt es auch seltene Beute. Je höher die Welle, desto mehr. Drüberlaufen sammelt ein, nach 5 min verschwinden die Items.
+- **Häufigkeit:** Wie oft Angriffe kommen (Aus, 1, 2, 3, 5 oder 7 Tage), stellst du am Basisturm (E) ein.
 - **Ältere Spielstände:** Im Pause-Menü kannst du für sie die Turmverteidigung nachträglich einrichten.
 
 ## Einstellungen
