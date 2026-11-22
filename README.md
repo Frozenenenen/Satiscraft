@@ -56,7 +56,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
   - 30 s vor einer Welle erscheint rechts ein großer Countdown, in den letzten 10 s pulsiert er.
 - **Verteidigung** (Baumenü → Verteidigung):
   - Die Balliste braucht keine Munition.
-  - Der Geschützturm braucht Munition. Der Konstruktor macht aus 1 Eisenbarren 6 Munition, du lieferst sie per Band oder legst sie mit E ein.
+  - Der Geschützturm braucht Munition. Der Konstruktor macht aus 1 Eisenstange 6 Munition, du lieferst sie per Band oder legst sie mit E ein.
   - Der Laserturm ist spät baubar und braucht keine Munition.
   - Auf und über dem Pfad kann nicht gebaut werden.
 - **Basis:** Der Turm hat 1000 Lebenspunkte und regeneriert sich tagsüber. Fällt er, verschwinden die Gegner, und er steht mit halber Kraft wieder. Besiegte Gegner hinterlassen etwas Erz.

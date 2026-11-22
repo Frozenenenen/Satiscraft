@@ -69,7 +69,7 @@ const RECIPES={
  smelter:[{in:{iron_ore:1},out:{iron_bar:1},t:2},{in:{copper_ore:1},out:{copper_bar:1},t:2},{in:{gold_ore:1},out:{gold_bar:1},t:3},{in:{titan_ore:1},out:{titan_bar:1},t:4},
   {in:{sand:1},out:{glass:1},t:2},{in:{quartz_ore:1},out:{quartz:1},t:3},{in:{bauxite:1},out:{alu_bar:1},t:4}],
  constructor:[{in:{iron_bar:2},out:{iron_plate:1},t:3},{in:{iron_bar:1},out:{rod:1},t:2},{in:{copper_bar:1},out:{wire:2},t:2},
-  {in:{wood:1},out:{planks:2},t:1.5},{in:{stone:2},out:{concrete:1},t:3},{in:{alu_bar:1},out:{alu_sheet:1},t:3},{in:{copper_bar:2},out:{copper_sheet:1},t:3},{in:{iron_bar:1},out:{ammo:6},t:2}],
+  {in:{wood:1},out:{planks:2},t:1.5},{in:{stone:2},out:{concrete:1},t:3},{in:{alu_bar:1},out:{alu_sheet:1},t:3},{in:{copper_bar:2},out:{copper_sheet:1},t:3},{in:{rod:1},out:{ammo:6},t:2}],
  foundry:[{in:{iron_ore:1,coal:1},out:{steel:1},t:3},{in:{sand:2,quartz:1},out:{silicon:1},t:4}],
  assembler:[{in:{steel:1,wire:4},out:{motor:1},t:6},{in:{gold_bar:1,wire:2},out:{circuit:1},t:5},
   {in:{iron_plate:2,rod:2},out:{frame:1},t:5},{in:{silicon:1,copper_sheet:1},out:{chip:1},t:6}]};
