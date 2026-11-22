@@ -53,6 +53,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Angriffe:** Alle x Tage (Einstellungen: Aus, 1, 2, 3, 5 oder 7) greifen zur Nacht Gegner an. Sie kommen aus einem Portal im Norden und laufen über einen festen, unzerstörbaren Pfad zum Basisturm.
   - Mit jeder Welle kommen mehr Gegner, und sie halten mehr aus.
   - Läufer greifen ab Welle 1 an, Brocken ab Welle 3, Flitzer ab Welle 5.
+  - 30 s vor einer Welle erscheint rechts ein großer Countdown, in den letzten 10 s pulsiert er.
 - **Verteidigung** (Baumenü → Verteidigung):
   - Die Balliste braucht keine Munition.
   - Der Geschützturm braucht Munition. Der Konstruktor macht aus 1 Eisenbarren 6 Munition, du lieferst sie per Band oder legst sie mit E ein.
