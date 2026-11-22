@@ -175,6 +175,26 @@ function markDirty(x,y,z){const cx=Math.floor(x/CS),cy=Math.floor(y/CS),cz=Math.
   const X=cx+ax,Y=cy+ay,Z=cz+az;if(X<0||Y<0||Z<0||X>=NCX||Y>=NCY||Z>=NCZ)continue;dirty.add(X+Z*NCX+Y*NCX*NCZ)}}
 function setBlock(x,y,z,id,rec){const i=idx(x,y,z);world[i]=id;if(rec)changes.set(i,id);markDirty(x,y,z)}
 
+// ---------- Laubzerfall ----------
+// Laub ist gehalten, wenn es über höchstens LEAF_REACH zusammenhängende Laubblöcke einen Stamm berührt.
+const LOG=5,LEAF=6,LEAF_REACH=5,decay=new Map();let gameTime=0;
+function leafSupported(x,y,z){
+ const seen=new Set([idx(x,y,z)]);let front=[[x,y,z]];
+ for(let d=0;d<LEAF_REACH&&front.length;d++){const next=[];
+  for(const[cx,cy,cz]of front)for(const[dx,dy,dz]of N6){const nx=cx+dx,ny=cy+dy,nz=cz+dz;
+   if(nx<0||nz<0||ny<0||nx>=W||nz>=D||ny>=H)continue;const id=world[idx(nx,ny,nz)];
+   if(id===LOG)return true;if(id!==LEAF)continue;const k=idx(nx,ny,nz);if(!seen.has(k)){seen.add(k);next.push([nx,ny,nz])}}
+  front=next}
+ return false}
+const N6=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+function scheduleDecay(x,y,z){const k=idx(x,y,z);if(!decay.has(k))decay.set(k,gameTime+.3+Math.random()*4)}
+function checkLeavesAround(x,y,z){const r=LEAF_REACH+1;
+ for(let lx=Math.max(0,x-r);lx<=Math.min(W-1,x+r);lx++)for(let ly=Math.max(0,y-r);ly<=Math.min(H-1,y+r);ly++)for(let lz=Math.max(0,z-r);lz<=Math.min(D-1,z+r);lz++)
+  if(world[idx(lx,ly,lz)]===LEAF&&!decay.has(idx(lx,ly,lz))&&!leafSupported(lx,ly,lz))scheduleDecay(lx,ly,lz)}
+function checkAllLeaves(){for(let i=0;i<world.length;i++)if(world[i]===LEAF){const x=i%W,z=Math.floor(i/W)%D,y=Math.floor(i/(W*D));if(!leafSupported(x,y,z))scheduleDecay(x,y,z)}}
+function updateDecay(){let n=0;for(const[k,t]of decay){if(t>gameTime)continue;decay.delete(k);if(world[k]!==LEAF)continue;
+ const x=k%W,z=Math.floor(k/W)%D,y=Math.floor(k/(W*D));if(leafSupported(x,y,z))continue;setBlock(x,y,z,0,true);if(++n>=8)break}}
+
 // ---------- Modelle ----------
 const BOX=new THREE.BoxGeometry(1,1,1),CYL=new THREE.CylinderGeometry(.5,.5,1,10),CONE=new THREE.ConeGeometry(.5,1,8);
 const mats={};const M=(c,e)=>mats[c+'_'+(e||0)]||(mats[c+'_'+(e||0)]=new THREE.MeshLambertMaterial({color:c,emissive:e?c:0,emissiveIntensity:e?.9:0}));
@@ -420,7 +440,7 @@ function sanitize(d){
  return o}
 function fits(type,ox,oy,oz,rot){const def=BUILD[type],[rw,rd]=dims(def,rot);
  for(let x=ox;x<ox+rw;x++)for(let z=oz;z<oz+rd;z++)for(let y=oy;y<oy+def.h;y++){if(x<0||z<0||y<1||x>=W||z>=D||y>=H||world[idx(x,y,z)])return false}return true}
-function clearAll(){for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
+function clearAll(){decay.clear();for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
  for(let i=0;i<chunks.length;i++)if(chunks[i]){scene.remove(chunks[i]);chunks[i].geometry.dispose();chunks[i]=null}dirty.clear();buildType=null}
 function newWorld(s,data){clearAll();seed=s;generate();inv={};tier=0;stats={delivered:0,produced:{}};goal=0;
  P.x=64.5;P.z=64.5;P.y=heights[64+64*W]+1;P.vy=0;P.yaw=0;P.pitch=-.15;
@@ -428,7 +448,7 @@ function newWorld(s,data){clearAll();seed=s;generate();inv={};tier=0;stats={deli
   inv=data.inv||{};tier=data.tier||0;stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
   for(const m of data.machines)if(fits(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m);
   for(const b of data.belts)if(fits('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
- for(let i=0;i<chunks.length;i++)buildChunk(i);dirty.clear();renderHotbar();renderGoal()}
+ if(data)checkAllLeaves();for(let i=0;i<chunks.length;i++)buildChunk(i);dirty.clear();renderHotbar();renderGoal()}
 
 // ---------- Szene-Helfer ----------
 const hl=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),new THREE.LineBasicMaterial({color:0x111111}));scene.add(hl);
@@ -449,6 +469,7 @@ function frame(now){
  for(const m of machines)tickMachine(m,dt);updateBelts(dt);drawItems();beltTex.offset.y=(beltTex.offset.y+BS*dt)%1;
  for(const m of machines){if(!m.working)continue;const a=m.a;if(a.drill)a.drill.rotation.y+=dt*(m.type==='miner2'?14:8);
   if(a.glow)a.glow.material.emissiveIntensity=.7+Math.sin(time*9)*.25;if(a.press)a.press.position.y=1.35+.3+Math.sin(time*6)*.2;if(a.arm)a.arm.rotation.y=Math.sin(time*2)*1.2}
+ gameTime+=dt;updateDecay();
  let n=0;for(const ci of dirty){buildChunk(ci);dirty.delete(ci);if(++n>=6)break}
  // Ziel & Abbau
  const h=locked&&!buildType?raycast(6):null;let info='';
@@ -464,7 +485,7 @@ function frame(now){
   if(mouseL){if(key!==mineKey){mineKey=key;mineT=0}
    if(tgt){mineT+=dt/.6;if(mineT>=1){removeBuilding(tgt);mineT=0;mineKey='';renderHotbar();toast(nm+' abgerissen – Material erstattet')}}
    else{const bd=BL[h.id];if(bd.tier<=tier){mineT+=dt*TOOLS[tier].s/bd.time;if(mineT>=1){mineT=0;mineKey='';
-    setBlock(h.x,h.y,h.z,0,true);const k=idx(h.x,h.y,h.z);reserves.delete(k);if(bd.drop)add(bd.drop,bd.ore?2:1);renderHotbar()}}}}
+    setBlock(h.x,h.y,h.z,0,true);if(h.id===LOG||h.id===LEAF)checkLeavesAround(h.x,h.y,h.z);const k=idx(h.x,h.y,h.z);reserves.delete(k);if(bd.drop)add(bd.drop,bd.ore?2:1);renderHotbar()}}}}
   else{mineT=0;mineKey=''}}
  else{hl.visible=false;mineT=0}
  $('bar').style.display=mineT>0?'block':'none';$('bar').firstChild.style.width=(mineT*100)+'%';
