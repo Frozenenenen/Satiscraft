@@ -31,6 +31,8 @@ const BUILD={
  belt:{n:'Förderband',w:1,d:1,h:1,cost:{copper_bar:1},ins:[],outs:[],desc:'Klick setzt ein Band in Blickrichtung. Shift + Ziehen legt eine Linie, die der Zugrichtung folgt (auch Kurven). Stufen ±1 Block möglich.'},
  bridge1:{n:'Förderbandbrücke',w:1,d:3,h:2,cost:{iron_bar:4,copper_bar:2},ins:[[0,-1,0]],outs:[[0,3,0]],bridge:1,desc:'Überspannt 1 Feld: Darunter kann ein Band quer durchlaufen. Eingang hinten, Ausgang vorne.'},
  bridge3:{n:'Lange Förderbandbrücke',w:1,d:5,h:2,cost:{iron_plate:6,rod:4},ins:[[0,-1,0]],outs:[[0,5,0]],bridge:1,desc:'Überspannt 3 Felder für mehrere Bänder oder Hindernisse.'},
+ splitter:{n:'Splitter',w:1,d:1,h:1,cost:{iron_bar:2,copper_bar:2},ins:[[0,-1,0]],outs:[[0,1,0],[-1,0,1],[1,0,3]],router:1,desc:'1 Eingang hinten, 3 Ausgänge. Verteilt reihum. Kann direkt auf ein Band gesetzt werden.'},
+ merger:{n:'Merger',w:1,d:1,h:1,cost:{iron_bar:2,copper_bar:2},ins:[[0,-1,0],[-1,0,3],[1,0,1]],outs:[[0,1,0]],router:1,desc:'3 Eingänge, 1 Ausgang vorne. Führt Bänder zusammen. Kann direkt auf ein Band gesetzt werden.'},
  smelter:{n:'Schmelzofen',w:2,d:2,h:2,cost:{stone:20,coal:5},ins:[[0,-1,0]],outs:[[1,2,0]],auto:1,desc:'Erz → Barren. Wählt das Rezept automatisch.'},
  miner1:{n:'Miner Mk1',w:2,d:2,h:3,cost:{iron_bar:10,stone:15},ins:[],outs:[[0,2,0]],miner:1,tier:2,period:2.4,desc:'Auf Erzvorkommen setzen. Fördert Kohle, Kupfer, Eisen.'},
  constructor:{n:'Konstruktor',w:2,d:3,h:2,cost:{iron_bar:12,copper_bar:8},ins:[[0,-1,0]],outs:[[1,3,0]],desc:'Barren → Platten, Stangen, Draht.'},
@@ -225,6 +227,9 @@ function model(type,ghost){
   for(let i=-1.2;i<=1.21;i+=.3){bx(g,C(0x5a646d),.08,1.4,.05,i,.15,1.41);bx(g,C(0x5a646d),.08,1.4,.05,i,.15,-1.41)}
   bx(g,C(0xe8892b),2.82,.12,2.82,0,1.2,0);bx(g,C(0x23272c),1,1,.06,0,.15,1.43);
   const lid=new THREE.Group();lid.position.set(0,1.55,-1.4);bx(lid,C(0x4d565e),2.86,.14,2.86,0,0,1.4);bx(lid,C(0xffd24a),.9,.05,.9,0,.14,1.4);g.add(lid);a.lid=lid;a.lamp=.18}
+ if(def.router){const col=type==='splitter'?0xe8b02b:0x3d78c2;bx(g,C(0x3b3f44),.96,.12,.96,0,0,0);bx(g,C(col),.66,.42,.66,0,.12,0);
+  bx(g,C(0x33373c),.5,.06,.5,0,.54,0);bx(g,C(0x23272c),.3,.2,.08,0,.18,.33);bx(g,C(0x23272c),.3,.2,.08,0,.18,-.33);
+  bx(g,C(0x23272c),.08,.2,.3,.33,.18,0);bx(g,C(0x23272c),.08,.2,.3,-.33,.18,0)}
  if(def.bridge){const N=def.d*8;const pts=[];for(let i=0;i<=N;i++){const[py,pz]=bridgePath(def,i/N);pts.push([py-.17,pz])}
   for(let i=0;i<N;i++){const[y0,z0]=pts[i],[y1,z1]=pts[i+1];const len=Math.hypot(y1-y0,z1-z0),ang=Math.atan2(y1-y0,z1-z0),cy=(y0+y1)/2,cz=(z0+z1)/2;
    for(const[w,h,x,c]of[[.9,.08,0,0x3a3f45],[.08,.2,-.46,0x707780],[.08,.2,.46,0x707780]]){const me=new THREE.Mesh(BOX,C(c));me.scale.set(w,h,len+.02);me.position.set(x,cy+h/2,cz);me.rotation.x=-ang;g.add(me)}}
@@ -259,7 +264,7 @@ function cellsOf(def,ox,oy,oz,rot){const c=[];for(let lx=0;lx<def.w;lx++)for(let
 function checkPlace(type,ox,oy,oz,rot){
  const def=BUILD[type];const cells=cellsOf(def,ox,oy,oz,rot);
  for(const c of cells){if(c.x<0||c.z<0||c.x>=W||c.z>=D||c.y<1||c.y>=H)return'Außerhalb der Welt';
-  if(get(c.x,c.y,c.z))return'Platz blockiert – Blöcke wegräumen';
+  if(get(c.x,c.y,c.z)&&!(def.router&&get(c.x,c.y,c.z)===BELT))return'Platz blockiert – Blöcke wegräumen';
   if(c.base&&!opaque(get(c.x,c.y-1,c.z)))return'Fläche nicht eben – Boden fehlt'}
  const px0=Math.floor(P.x-.3),px1=Math.floor(P.x+.3),pz0=Math.floor(P.z-.3),pz1=Math.floor(P.z+.3),py0=Math.floor(P.y),py1=Math.floor(P.y+1.79);
  if(cells.some(c=>c.x>=px0&&c.x<=px1&&c.z>=pz0&&c.z<=pz1&&c.y>=py0&&c.y<=py1))return'Du stehst im Weg';
@@ -274,6 +279,7 @@ function createMachine(type,ox,oy,oz,rot,data){
  for(const i of m.cells){world[i]=MACH;machineAt.set(i,m);markDirty(i%W,Math.floor(i/(W*D)),Math.floor(i/W)%D)}
  const mp=l=>Array.isArray(l)?l.map(([lx,lz,ld])=>{const[a,b]=toW(def,rot,lx,lz);return{x:ox+a,y:oy,z:oz+b,dir:(ld+rot)%4}}):[];
  m.ins=mp(def.ins);m.outs=mp(def.outs);
+ if(def.router&&data){for(const k in m.outBuf)for(let i=0;i<m.outBuf[k]&&m.tr.length<4;i++)m.tr.push({item:k});m.outBuf={}}
  if(def.miner&&m.recipe!==1){m.recipe=0;let ore=false;minerArea(m,()=>{ore=true;return true});if(!ore)m.recipe=1}
  const{g,a}=model(type);g.position.set(ox+rw/2,oy,oz+rd/2);g.rotation.y=-rot*Math.PI/2;scene.add(g);g.updateMatrixWorld(true);m.g=g;m.a=a;m.pulse=0;m.emitT=Math.random()*.3;machines.push(m);return m}
 function removeBuilding(t){
@@ -293,8 +299,9 @@ function updateSlopes(){slopesDirty=false;
   else for(let d=0;d<4&&!s;d++){const[dx,dz]=DIRS[d];const ub=belts.get(idx(b.x-dx,b.y+1,b.z-dz));if(ub&&ub.dir===d&&!beltAhead(ub,0))s=-1}
   if(s!==b.s){b.s=s;b.k.rotation.x=s?s*-Math.PI/4:0;b.k.scale.z=s?Math.SQRT2:1;b.k.position.y=s?.5:0}}}
 const beltFree=b=>!b.items.length||(b.items.length<4&&b.items[b.items.length-1].p>=SP);
-function machineAccept(m,item){
+function machineAccept(m,item,pi){
  const def=BUILD[m.type];
+ if(def.router){if(m.type==='merger'){if(m.tr.some(t=>t.pi===pi))return false;m.tr.push({item,pi});return true}if(m.tr.length>=2)return false;m.tr.push({item});return true}
  if(def.bridge){const tr=m.tr;if(tr.length>=def.d*3||(tr.length&&tr[tr.length-1].t<SP/BS))return false;tr.push({item,t:0});return true}
  if(def.store){if(tot(m.inBuf)>=def.store)return false;m.inBuf[item]=(m.inBuf[item]||0)+1;m.pulse=.35;return true}
  const rs=RECIPES[m.type];if(!rs)return false;let r=rs[m.recipe];
@@ -305,7 +312,8 @@ function transfer(b,item){
  for(const dy of[0,1,-1]){const nb=belts.get(idx(tx,b.y+dy,tz));if(tx<0||tz<0||tx>=W||tz>=D)return false;
   if(nb){if(nb.dir===(b.dir+2)%4)return false;if(beltFree(nb)){nb.items.push({item,p:0});return true}return false}}
  const m=machineAt.get(idx(tx,b.y,tz));if(!m)return false;
- if(BUILD[m.type].ins==='all'||m.ins.some(p=>p.x===b.x&&p.y===b.y&&p.z===b.z&&p.dir===b.dir)){if(machineAccept(m,item)){stats.delivered++;return true}}
+ const pi=m.ins.findIndex(p=>p.x===b.x&&p.y===b.y&&p.z===b.z&&p.dir===b.dir);
+ if(BUILD[m.type].ins==='all'||pi>=0){if(machineAccept(m,item,pi)){stats.delivered++;return true}}
  return false}
 function updateBelts(dt){for(const b of belts.values()){const its=b.items;
  for(let i=0;i<its.length;i++){const lim=i===0?1:its[i-1].p-SP;its[i].p=Math.max(its[i].p,Math.min(its[i].p+BS*dt,lim))}
@@ -315,6 +323,13 @@ function minerArea(m,fn){const def=BUILD[m.type];for(let y=m.y-1;y>=Math.max(1,m
 const bridgePath=(def,f)=>[.27+1.25*Math.min(1,Math.sin(Math.PI*f)*1.6),-def.d/2+f*def.d];
 function tickMachine(m,dt){
  const def=BUILD[m.type];
+ if(def.router){m.working=m.tr.length>0;m.status=m.tr.length?'Verteilt…':'Wartet auf Items';
+  if(m.tr.length&&m.type==='merger'){const p=m.outs[0],b=belts.get(idx(p.x,p.y,p.z));
+   if(b&&b.dir!==(p.dir+2)%4&&beltFree(b)){m.ri=m.ri||0;let j=-1,pi=0;for(let k=0;k<3&&j<0;k++){pi=(m.ri+k)%3;j=m.tr.findIndex(t=>t.pi===pi)}
+    if(j<0)j=0;else m.ri=(pi+1)%3;b.items.push({item:m.tr.splice(j,1)[0].item,p:0})}return}
+  if(m.tr.length){const n=m.outs.length;m.rr=m.rr||0;for(let k=0;k<n;k++){const i=(m.rr+k)%n,p=m.outs[i],b=belts.get(idx(p.x,p.y,p.z));
+   if(!b||b.dir===(p.dir+2)%4||!beltFree(b))continue;b.items.push({item:m.tr.shift().item,p:0});m.rr=(i+1)%n;break}}
+  return}
  if(def.bridge){const travel=def.d/BS;for(let i=0;i<m.tr.length;i++){const lim=i===0?travel:m.tr[i-1].t-SP/BS;m.tr[i].t=Math.max(m.tr[i].t,Math.min(m.tr[i].t+dt,lim))}
   if(m.tr.length&&m.tr[0].t>=travel&&!tot(m.outBuf)){const it=m.tr.shift().item;m.outBuf[it]=1}
   m.working=m.tr.length>0;m.status=m.tr.length+' Items unterwegs'}
@@ -325,7 +340,7 @@ function tickMachine(m,dt){
     minerArea(m,(x,y,z,id)=>{found=true;const k=idx(x,y,z);let r=reserves.has(k)?reserves.get(k):RESERVE;r--;const it=BL[id].drop;m.outBuf[it]=(m.outBuf[it]||0)+1;
      stats.produced[it]=(stats.produced[it]||0)+1;if(r<=0){reserves.delete(k);setBlock(x,y,z,0,true)}else reserves.set(k,r);return true});
     if(!found){m.working=false;m.status=m.recipe===1?'Kein Stein im Bereich unter dem Miner':'Kein abbaubares Erz im Bereich unter dem Miner – Abbauziel auf Stein stellen?'}}}}
- else if(!def.bridge&&RECIPES[m.type]){const r=RECIPES[m.type][m.recipe];
+ else if(!def.bridge&&!def.router&&RECIPES[m.type]){const r=RECIPES[m.type][m.recipe];
   const ok=Object.keys(r.in).every(k=>(m.inBuf[k]||0)>=r.in[k]);const full=Object.keys(r.out).some(k=>(m.outBuf[k]||0)>=MAXOUT);
   if(ok&&!full){m.working=true;m.status='Produziert…';m.t+=dt;if(m.t>=r.t){m.t=0;for(const k in r.in){m.inBuf[k]-=r.in[k];if(!m.inBuf[k])delete m.inBuf[k]}
    for(const k in r.out){m.outBuf[k]=(m.outBuf[k]||0)+r.out[k];stats.produced[k]=(stats.produced[k]||0)+r.out[k]}}}
@@ -429,7 +444,7 @@ addEventListener('keydown',e=>{
  if(e.code==='KeyQ'){if(buildType){buildType=null}else openPanel('build')}
  if(e.code==='KeyI'||e.code==='Tab')openPanel('inv');
  if(e.code==='KeyR'&&buildType)rotOff=(rotOff+1)%4;
- if(e.code==='KeyE'){const h=raycast(6);if(h&&h.id===MACH){const m=machineAt.get(idx(h.x,h.y,h.z));if(m&&m.type!=='belt'&&!BUILD[m.type].bridge){buildType=null;openPanel('machine',m)}}}});
+ if(e.code==='KeyE'){const h=raycast(6);if(h&&h.id===MACH){const m=machineAt.get(idx(h.x,h.y,h.z));if(m&&m.type!=='belt'&&!BUILD[m.type].bridge&&!BUILD[m.type].router){buildType=null;openPanel('machine',m)}}}});
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',releaseMouse);
 // Kamera dreht nur bei gedrückter rechter Maustaste; ein kurzer Rechtsklick ohne Ziehen setzt einen Block bzw. bricht den Baumodus ab.
@@ -451,8 +466,11 @@ let place=null;
 function computePlace(){place=null;if(!buildType)return;const h=raycast(8);if(!h)return;const def=BUILD[buildType];
  const rot=(facing()+rotOff)%4,[rw,rd]=dims(def,rot);// Zielt man von oben auf ein Band, wird auf dessen Höhe gebaut (z. B. Brückenmitte genau über dem Band).
  const onBelt=h.id===BELT&&h.n[1]===1;const ax=onBelt?h.x:h.x+h.n[0],ay=onBelt?h.y:h.y+h.n[1],az=onBelt?h.z:h.z+h.n[2];
- const ox=ax-Math.floor(rw/2),oz=az-Math.floor(rd/2);place={ox,oy:ay,oz,rot,rw,rd,err:checkPlace(buildType,ox,ay,oz,rot)}}
+ const ox=ax-Math.floor(rw/2),oz=az-Math.floor(rd/2);let r2=rot;
+ if(def.router){const ob=belts.get(idx(ox,ay,oz));if(ob)r2=(ob.dir+rotOff)%4}
+ place={ox,oy:ay,oz,rot:r2,rw,rd,err:checkPlace(buildType,ox,ay,oz,r2)}}
 function tryPlace(rotOverride){if(!place)return null;if(place.err){toast(place.err);return null}const def=BUILD[buildType];
+ if(def.router){const ob=belts.get(idx(place.ox,place.oy,place.oz));if(ob)removeBuilding(ob)}
  for(const k in def.cost)add(k,-def.cost[k]);const r=createMachine(buildType,place.ox,place.oy,place.oz,rotOverride??place.rot);renderHotbar();
  if(!has(def.cost)&&buildType!=='belt')buildType=null;return r}
 // Shift + Ziehen: Bänder folgen der Zugrichtung; das vorige Band wird zum neuen hin ausgerichtet (Kurven).
@@ -530,7 +548,8 @@ for(let i=0;i<4000;i++)itemMesh.setColorAt(i,tmpC.set(0xffffff));itemMesh.frustu
 const itemCol={};for(const k in ITEMS)itemCol[k]=new THREE.Color(ITEMS[k][1]);
 function drawItems(){let n=0;for(const b of belts.values()){const[dx,dz]=DIRS[b.dir];for(const it of b.items){if(n>=4000)break;
  tmpM.makeTranslation(b.x+.5+dx*(it.p-.5),b.y+.27+(b.s===1?it.p:b.s===-1?1-it.p:0),b.z+.5+dz*(it.p-.5));itemMesh.setMatrixAt(n,tmpM);itemMesh.setColorAt(n,itemCol[it.item]);n++}}
- for(const m of machines){const def=BUILD[m.type];if(!def.bridge)continue;const travel=def.d/BS;
+ for(const m of machines){const def=BUILD[m.type];if(def.router){m.tr.forEach((it,k)=>{if(n>=4000)return;tmpM.makeTranslation(m.x+.5,m.y+.75+k*.32,m.z+.5);itemMesh.setMatrixAt(n,tmpM);itemMesh.setColorAt(n,itemCol[it.item]);n++});continue}
+  if(!def.bridge)continue;const travel=def.d/BS;
   const list=m.tr.map(it=>[it.item,Math.min(1,it.t/travel)]);for(const k in m.outBuf)list.push([k,1]);
   for(const[item,f]of list){if(n>=4000)break;const[py,pz]=bridgePath(def,f);tmpV.set(0,py,pz);m.g.localToWorld(tmpV);
    tmpM.makeTranslation(tmpV.x,tmpV.y,tmpV.z);itemMesh.setMatrixAt(n,tmpM);itemMesh.setColorAt(n,itemCol[item]);n++}}
