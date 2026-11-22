@@ -143,7 +143,10 @@ function terrainAt(x,z){let h=rawH(x,z);const[t,m]=climate(x,z);
  if(dry>0)h=h+(15+fbm(x/22,z/22,2)*8-h)*dry*.85;
  if(bad>0){const hb=h+Math.max(0,fbm(x/45-7,z/45+3,3)-.42)*70;h=h+(Math.floor(hb/4)*4-h)*bad}
  h=Math.max(6,Math.min(H-6,Math.floor(h)));
- const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const tt=dd/14;h=Math.round(h*tt+spawnH*(1-tt))}return[h,biomeOf(t,m)]}
+ const b=biomeOf(t,m);let rock=false;
+ // Felsplatten: Stein tritt an die Oberfläche (Wiese, Birkenwald, Tundra), teils als kleine Kuppen
+ if(b<=2){const r=fbm(x/16+77,z/16-33,2);if(r>.66){rock=true;h+=Math.min(3,Math.floor((r-.66)*30))}}
+ const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const tt=dd/14;h=Math.round(h*tt+spawnH*(1-tt));if(dd<8)rock=false}return[h,b,rock]}
 // Erzadern und Bäume je Chunk; eine Spalte übernimmt auch die Teile, die aus Nachbar-Chunks hineinragen.
 const VEINS=[[7,.72,0,3],[8,.44,0,3],[9,.5,0,3],[10,.25,2,9],[11,.19,4,14]];
 const BVEINS=[[],[[7,.4,0,3]],[[11,.3,2,10],[9,.3,0,4]],[[20,.7,1,6],[10,.25,1,6]],[[21,.8,0,3],[8,.4,0,3]]];
@@ -161,14 +164,17 @@ function chunkFeatures(fx,fz){const k=colKey(fx,fz);let f=featCache.get(k);if(f)
   f.v.push([id,x,Math.max(2,h-dmin-Math.floor(rnd()*dvar)),z,1.6+rnd()*1.4])}}
  if(cb===1)for(let i=0;i<3;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),th=5+Math.floor(rnd()*3),h=surfaceH(x,z);
   if(biomeAt(x,z)===1&&h>14&&h<=32)f.t.push([x,h,z,th,'birch'])}
+ f.b=[];for(let i=0;i<2;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),r=1+rnd()*1.3,keep=rnd()<.55;const[h,bb]=terrainAt(x,z);
+  if(keep&&bb<=2&&h>14&&Math.hypot(x-64,z-64)>12)f.b.push([x,h,z,r])}
  featCache.set(k,f);return f}
 function genCol(cx,cz){const c={cx,cz,d:new Uint8Array(16*16*H),m:[null,null,null,null],shown:false,leaf:false};cols.set(colKey(cx,cz),c);const d=c.d,x0=cx*16,z0=cz*16;
  const I=(x,y,z)=>(x-x0)|((z-z0)<<4)|(y<<8),inside=(x,y,z)=>x>=x0&&x<x0+16&&z>=z0&&z<z0+16&&y>=0&&y<H;
- for(let x=x0;x<x0+16;x++)for(let z=z0;z<z0+16;z++){const[h,b]=terrainAt(x,z);
+ for(let x=x0;x<x0+16;x++)for(let z=z0;z<z0+16;z++){const[h,b,rock]=terrainAt(x,z);
   for(let y=0;y<=h;y++){let id;
    if(y===0)id=12;
    else if(b===3)id=y>=h-3?4:y>=h-7?13:3;
    else if(b===4)id=y>=h-9?((y>>1)%3===0?13:19):3;
+   else if(rock&&h>14)id=3;
    else{id=y<h-3?3:y<h?2:(b===2?14:1);if(h<=14&&y>=h-2)id=4;if(h>32&&y>=h-1&&b!==2)id=3}
    d[I(x,y,z)]=id}}
  const vein=(id,vx,vy,vz,r)=>{const R=Math.ceil(r);for(let x=Math.max(vx-R,x0);x<=Math.min(vx+R,x0+15);x++)for(let z=Math.max(vz-R,z0);z<=Math.min(vz+R,z0+15);z++)for(let y=Math.max(1,vy-R);y<=Math.min(H-1,vy+R);y++){
@@ -177,6 +183,8 @@ function genCol(cx,cz){const c={cx,cz,d:new Uint8Array(16*16*H),m:[null,null,nul
  for(const f of near)for(const v of f.v)vein(...v);
  for(const v of spawnVeins)vein(...v);
  const put=(x,y,z,id,force)=>{if(inside(x,y,z)&&(force||!d[I(x,y,z)]))d[I(x,y,z)]=id};
+ for(const f of near)for(const[bx0,bh,bz0,br]of f.b){const R=Math.ceil(br);for(let ax=-R;ax<=R;ax++)for(let az=-R;az<=R;az++)for(let ay=-1;ay<=R;ay++){
+  if(Math.hypot(ax,ay*1.25,az)<br+hash3(bx0+ax,bh+ay,bz0+az)*.45)put(bx0+ax,bh+ay,bz0+az,3,ay<=0)}}
  for(const f of near)for(const[tx,h,tz,th,ty]of f.t){
   if(ty==='cactus'){for(let y=1;y<=th;y++)put(tx,h+y,tz,15,true);continue}
   const log=ty==='birch'?17:5,leaf=ty==='birch'?18:ty==='spruce'?16:6;
@@ -185,6 +193,7 @@ function genCol(cx,cz){const c={cx,cz,d:new Uint8Array(16*16*H),m:[null,null,nul
   const rr=ty==='birch'?1.7:2.4;
   for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=th-1;ly<=th+2;ly++){const r=ly>th?1.3:rr;if(Math.hypot(lx,lz)>r)continue;put(tx+lx,h+ly,tz+lz,leaf)}}
  const ch=changesByCol.get(colKey(cx,cz));if(ch){for(const i of ch)d[I(kX(i),kY(i),kZ(i))]=changes.get(i);c.leaf=true}
+ const pa=pathAirCols.get(colKey(cx,cz));if(pa)for(const i of pa){const p=I(kX(i),kY(i),kZ(i));if(d[p]!==25)d[p]=0}
  return c}
 
 // ---------- Texturatlas ----------
@@ -704,6 +713,10 @@ function sanitize(d){
  for(const b of arr(d.belts)){if(!Array.isArray(b)||!isXZ(b[0])||!isInt(b[1],1,H-1)||!isXZ(b[2])||!isInt(b[3],0,3))continue;
   o.belts.push([b[0],b[1],b[2],b[3],arr(b[4]).filter(k=>typeof k==='string'&&own(ITEMS,k)).slice(0,4)])}
  return o}
+// Beim Laden: Gebäudezellen dürfen durch geänderte Weltgenerierung (z. B. Felsbrocken) belegt sein – natürliche Blöcke dann entfernen.
+function clearFor(type,ox,oy,oz,rot){const cells=type==='belt'?[{x:ox,y:oy,z:oz}]:cellsOf(BUILD[type],ox,oy,oz,rot);
+ for(const c of cells){if(!isXZ(c.x)||!isXZ(c.z)||c.y<1||c.y>=H)return false;const v=get(c.x,c.y,c.z);if(v===MACH||v===BELT)return false}
+ for(const c of cells)if(get(c.x,c.y,c.z))setBlock(c.x,c.y,c.z,0,true);return true}
 function fits(type,ox,oy,oz,rot){if(type==='belt')return isXZ(ox)&&isXZ(oz)&&oy>=1&&oy<H&&!get(ox,oy,oz);
  return cellsOf(BUILD[type],ox,oy,oz,rot).every(c=>isXZ(c.x)&&isXZ(c.z)&&c.y>=1&&c.y<H&&!get(c.x,c.y,c.z))}
 function clearAll(){decay.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
@@ -712,9 +725,10 @@ function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:
  P.x=64.5;P.z=64.5;P.y=surfaceH(64,64)+1;P.vy=0;P.yaw=0;P.pitch=-.15;
  if(data){for(const[i,id]of data.changes)recordChange(i,id);for(const[i,r]of data.res)reserves.set(i,r);
   inv=data.inv||{};tier=data.tier||0;gadgets=data.gadgets||{radar:false};stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
-  for(const m of data.machines)if(fits(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m);
-  for(const b of data.belts)if(fits('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
- if(data&&data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path});buildPathIndex();
+  if(data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path});buildPathIndex()}
+  for(const m of data.machines)if(clearFor(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m);
+  for(const b of data.belts)if(clearFor('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
+ if(data&&data.td){const t=data.td;
   if(td.path){for(const[ty,sv,hp,mx]of t.en){const e=spawnEnemy(ty,mx,0,Math.min(sv,route.length-1));e.hp=hp}spawnQ=t.q.map((ty,i)=>({ty,t:i*1.6}));waveT=0}}
  if(!data){placeBaseTower();const tw=machines.find(m=>m.type==='tower');if(tw)makePath(tw)}
  stream(0,250);dirty.clear();renderHotbar();renderGoal()}
@@ -758,7 +772,7 @@ function drawItems(){let n=0;for(const b of belts.values()){const[dx,dz]=DIRS[b.
 // ---------- Tag/Nacht und Turmverteidigung ----------
 // Ein Tag = 12 min (t 0..1, 0 = 6:00, Nacht ab t=0.65 = 19:00). Angriffe zur Nacht alle td.every Tage über den festen Pfad.
 const DAYLEN=720,NIGHT=.65,TOWER_HP=1000,WAVE_OPTS=[0,1,2,3,5,7];
-let td={day:1,t:.08,wave:0,hp:TOWER_HP,every:2,defeats:0,kills:0,path:null},route=[],pathSet=new Set(),enemies=[],spawnQ=[],shots=[],enemyId=1,portal=null,waveT=0;
+const pathAirCols=new Map();let td={day:1,t:.08,wave:0,hp:TOWER_HP,every:2,defeats:0,kills:0,path:null},route=[],pathSet=new Set(),enemies=[],spawnQ=[],shots=[],enemyId=1,portal=null,waveT=0;
 const ETYPES={walker:{n:'Läufer',hp:30,sp:2.2,dps:6,col:0xc0392b,sc:1},brute:{n:'Brocken',hp:140,sp:1.2,dps:18,col:0x6c3483,sc:1.45},runner:{n:'Flitzer',hp:18,sp:4.2,dps:3,col:0xe6b800,sc:.75}};
 const hpMul=n=>1+.3*(n-1)+.02*(n-1)**2;
 function waveList(n){const cnt=Math.min(45,4+n*2),l=[];for(let i=0;i<cnt;i++){let ty='walker';if(n>=5&&i%3===1)ty='runner';if(n>=3&&i%4===3)ty='brute';l.push(ty)}return l}
@@ -782,8 +796,9 @@ function makePath(t){const rnd=mulberry(hashI(t.x,t.z,777));let x=t.x+1,z=t.z-2;
   for(let yy=py-1;yy>0&&!solidId(get(cx,yy,cz));yy--)setBlock(cx,yy,cz,3,true);
   setBlock(cx,py,cz,25,true);for(let yy=py+1;yy<=py+4&&yy<H;yy++){const v=get(cx,yy,cz);if(v&&v!==MACH&&v!==BELT)setBlock(cx,yy,cz,0,true)}}
  td.path=path;buildPathIndex()}
-function buildPathIndex(){pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}if(!td.path)return;
- for(const[px,py,pz]of td.path)for(let ax=-1;ax<=1;ax++)for(let az=-1;az<=1;az++)for(let yy=py-1;yy<=py+4;yy++)pathSet.add(idx(px+ax,yy,pz+az));
+function buildPathIndex(){pathSet.clear();pathAirCols.clear();route=[];if(portal){scene.remove(portal);portal=null}if(!td.path)return;
+ for(const[px,py,pz]of td.path)for(let ax=-1;ax<=1;ax++)for(let az=-1;az<=1;az++)for(let yy=py-1;yy<=py+4;yy++){const k=idx(px+ax,yy,pz+az);pathSet.add(k);
+  if(yy>py){const ck=colKey((px+ax)>>4,(pz+az)>>4);let a=pathAirCols.get(ck);if(!a)pathAirCols.set(ck,a=[]);a.push(k)}}
  route=td.path.slice().reverse().map(([px,py,pz])=>({x:px+.5,y:py+1,z:pz+.5}));
  const p=route[0],g=new THREE.Group();g.position.set(p.x,p.y,p.z);const n=route[1];g.rotation.y=Math.atan2(n.x-p.x,n.z-p.z);
  bx(g,M(0x2b2140),.5,3.2,.5,-1.6,0,0);bx(g,M(0x2b2140),.5,3.2,.5,1.6,0,0);bx(g,M(0x2b2140),3.7,.5,.5,0,3.2,0);
