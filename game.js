@@ -625,7 +625,7 @@ function drawItems(){let n=0;for(const b of belts.values()){const[dx,dz]=DIRS[b.
 
 // ---------- Erzradar (F): Richtung zum nächsten Block der gewählten Erzart ----------
 const RADAR=[7,8,9,10,11],RADAR_R=10;let radarSel=-1,radarT=0,radarHit=null;
-try{const v=+localStorage.getItem('satiscraft-radar');if(v>=-1&&v<RADAR.length)radarSel=v}catch(e){}
+try{const raw=localStorage.getItem('satiscraft-radar');const v=raw===null?-1:+raw;if(Number.isInteger(v)&&v>=-1&&v<RADAR.length)radarSel=v}catch(e){}
 function oreIndex(c){if(c.ore)return c.ore;const o={};for(let p=0;p<c.d.length;p++){const v=c.d[p];if(v>=7&&v<=11)(o[v]||(o[v]=[])).push(p)}return c.ore=o}
 function radarScan(){radarHit=null;if(radarSel<0)return;const id=RADAR[radarSel],ex=P.x,ey=P.y+1.6,ez=P.z,pcx=Math.floor(ex)>>4,pcz=Math.floor(ez)>>4;let best=Infinity,gen=0;
  const ring=[];for(let dx=-RADAR_R;dx<=RADAR_R;dx++)for(let dz=-RADAR_R;dz<=RADAR_R;dz++)if(dx*dx+dz*dz<=RADAR_R*RADAR_R)ring.push([dx,dz]);ring.sort((a,b)=>a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1]);
