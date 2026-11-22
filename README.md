@@ -69,6 +69,14 @@ Im Pause-Menü (Esc) stellst du die Sichtweite ein: 4, 6, 8, 10, 12 oder 16 Chun
 
 1. Ein Spieler öffnet das Spiel auf `https://frozenenenen.github.io/Satiscraft/` und klickt im Pause-Menü (Esc) auf **Spiel hosten**. Er bekommt einen 5-stelligen Raumcode.
 2. Die anderen geben im Pause-Menü den Code ein und klicken **Beitreten**.
+3. Beim Host erscheint oben „Name möchte beitreten“ mit **Annehmen** / **Ablehnen**. Ohne Antwort wird die Anfrage nach 60 s abgelehnt.
+
+**Wenn der Beitritt nicht klappt:** Der Beitretende sieht eine Schrittliste (Netzwerkbibliothek → Vermittlungsserver → Raum → Direktverbindung → Bestätigung → Welt) mit Ursache und Lösung am fehlgeschlagenen Schritt. Häufigste Ursachen:
+- Raum nicht gefunden: Code vertippt, Host-Tab geschlossen oder unterschiedliche Spielversionen → beide Strg+F5.
+- Andere Spielversion: wird erkannt und gemeldet → beide Strg+F5.
+- Direktverbindung scheitert: VPN, Firmen-/Schulnetz oder strenge Firewall → VPN aus, anderes Netz/Hotspot oder Rollen tauschen.
+- Vermittlungsserver nicht erreichbar: Internet, Werbe-/Skriptblocker.
+- Falsche Seite: Koop geht nur auf GitHub Pages, nicht in der Claude-Vorschau.
 
 - **Welt und Fortschritt:** Die Welt des Hosts wird geteilt. Inventar, Werkzeugstufe und Meilensteine sind gemeinsam.
 - **Wer was berechnet:** Der Host berechnet die Welt. Mitspieler schicken nur Aktionen, der Host prüft jede einzelne.

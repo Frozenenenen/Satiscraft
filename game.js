@@ -719,13 +719,13 @@ function clearFor(type,ox,oy,oz,rot){const cells=type==='belt'?[{x:ox,y:oy,z:oz}
  for(const c of cells)if(get(c.x,c.y,c.z))setBlock(c.x,c.y,c.z,0,true);return true}
 function fits(type,ox,oy,oz,rot){if(type==='belt')return isXZ(ox)&&isXZ(oz)&&oy>=1&&oy<H&&!get(ox,oy,oz);
  return cellsOf(BUILD[type],ox,oy,oz,rot).every(c=>isXZ(c.x)&&isXZ(c.z)&&c.y>=1&&c.y<H&&!get(c.x,c.y,c.z))}
-function clearAll(){decay.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
+function clearAll(){decay.clear();pathAirCols.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
  for(const c of cols.values())hideCol(c);cols.clear();changesByCol.clear();featCache.clear();reserves.clear();dirty.clear();buildType=null}
 function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:0,hp:TOWER_HP,every:prefEvery(),defeats:0,kills:0,path:null};inv={};tier=0;gadgets={radar:false};stats={delivered:0,produced:{}};goal=0;
  P.x=64.5;P.z=64.5;P.y=surfaceH(64,64)+1;P.vy=0;P.yaw=0;P.pitch=-.15;
- if(data){for(const[i,id]of data.changes)recordChange(i,id);for(const[i,r]of data.res)reserves.set(i,r);
+ if(data){if(data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path});buildPathIndex()}
+  for(const[i,id]of data.changes)recordChange(i,id);for(const[i,r]of data.res)reserves.set(i,r);
   inv=data.inv||{};tier=data.tier||0;gadgets=data.gadgets||{radar:false};stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
-  if(data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path});buildPathIndex()}
   for(const m of data.machines)if(clearFor(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m);
   for(const b of data.belts)if(clearFor('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
  if(data&&data.td){const t=data.td;
@@ -806,6 +806,8 @@ function placeStarterBallista(){if(!td.path)return;
 function buildPathIndex(){pathSet.clear();pathAirCols.clear();route=[];if(portal){scene.remove(portal);portal=null}if(!td.path)return;
  for(const[px,py,pz]of td.path)for(let ax=-1;ax<=1;ax++)for(let az=-1;az<=1;az++)for(let yy=py-1;yy<=py+4;yy++){const k=idx(px+ax,yy,pz+az);pathSet.add(k);
   if(yy>py){const ck=colKey((px+ax)>>4,(pz+az)>>4);let a=pathAirCols.get(ck);if(!a)pathAirCols.set(ck,a=[]);a.push(k)}}
+ // Bereits geladene Spalten nachträglich freiräumen (sonst hängt das Ergebnis von der Ladereihenfolge ab)
+ for(const[ck,l]of pathAirCols){const c=cols.get(ck);if(!c)continue;for(const i of l){const p=(kX(i)&15)|((kZ(i)&15)<<4)|(kY(i)<<8);if(c.d[p]&&c.d[p]!==25&&c.d[p]!==MACH&&c.d[p]!==BELT){c.d[p]=0;c.ore=null;markDirty(kX(i),kY(i),kZ(i))}}}
  route=td.path.slice().reverse().map(([px,py,pz])=>({x:px+.5,y:py+1,z:pz+.5}));
  const p=route[0],g=new THREE.Group();g.position.set(p.x,p.y,p.z);const n=route[1];g.rotation.y=Math.atan2(n.x-p.x,n.z-p.z);
  bx(g,M(0x2b2140),.5,3.2,.5,-1.6,0,0);bx(g,M(0x2b2140),.5,3.2,.5,1.6,0,0);bx(g,M(0x2b2140),3.7,.5,.5,0,3.2,0);
@@ -1008,21 +1010,42 @@ function updateCoopUI(){const inCoop=net.role!=='solo';$('hostb').hidden=inCoop;
  $('coophud').textContent=net.role==='host'?`Koop-Host · Raum ${net.code} · ${n}/4 Spieler`:net.role==='client'?`Koop · Spieler ${net.id+1} · ${n} Spieler`:'';
  $('newb').disabled=inCoop;$('saveb').disabled=net.role==='client'}
 // --- Host ---
-async function hostGame(){if(net.role!=='solo'||net.peer)return;
- if(typeof RTCPeerConnection==='undefined')return coopState('WebRTC ist hier nicht verfügbar. Öffne das Spiel auf frozenenenen.github.io/Satiscraft.',true);
- coopState('Verbinde mit dem Vermittlungsserver…');try{await loadPeer()}catch(e){return coopState(e.message,true)}
+// Spielversion (aus ?v= der Skriptadresse) – Host und Gast müssen gleich sein.
+const GAME_VER=(()=>{try{const m=/[?&]v=(\d+)/.exec(document.currentScript&&document.currentScript.src||'');return m?+m[1]:0}catch(e){return 0}})();
+const ON_PAGES=typeof location!=='undefined'&&(/(^|\.)github\.io$/.test(location.hostname)||location.hostname==='localhost');
+function envProblem(){if(typeof RTCPeerConnection==='undefined')return'Dieser Browser bzw. diese Ansicht erlaubt keine Direktverbindungen (WebRTC).';
+ if(!ON_PAGES)return'Koop funktioniert nur auf der Spielseite frozenenenen.github.io/Satiscraft – nicht in der Claude-Vorschau.';return''}
+async function hostGame(){if(net.role!=='solo'||net.peer)return;const env=envProblem();if(env)return coopState(env,true);
+ coopState('Verbinde mit dem Vermittlungsserver…');try{await loadPeer()}catch(e){return coopState(e.message+' Prüfe Internetverbindung und Werbeblocker.',true)}
  const code=Array.from({length:5},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
  let peer;try{peer=new(PeerC())(NET_PREFIX+code,{debug:0})}catch(e){return coopState('Koop nicht möglich: '+e.message,true)}net.peer=peer;
- peer.on('open',()=>{net.role='host';net.id=0;net.code=code;coopState('Raum offen. Code für deine Mitspieler: '+code);updateCoopUI()});
+ const to=setTimeout(()=>{if(net.role!=='host'){coopState('Der Vermittlungsserver (0.peerjs.com) antwortet nicht. Ursachen: keine Internetverbindung, Werbe-/Skriptblocker, Firmen-Firewall. Später erneut versuchen.',true);try{peer.destroy()}catch(e){}net.peer=null}},12000);
+ peer.on('open',()=>{clearTimeout(to);net.role='host';net.id=0;net.code=code;coopState('Raum offen. Code für deine Mitspieler: '+code+' – du bestätigst jeden Beitritt.');updateCoopUI()});
  peer.on('connection',c=>hostAccept(c));
  peer.on('disconnected',()=>{if(net.role==='host')try{peer.reconnect()}catch(e){}});
- peer.on('error',err=>{if(net.role!=='host'){coopState('Raum konnte nicht geöffnet werden ('+(err.type||err.message)+').',true);try{peer.destroy()}catch(e){}net.peer=null}})}
-function hostAccept(conn){
- conn.on('open',()=>{if(net.conns.size>=3){conn.send({t:'full'});setTimeout(()=>conn.close(),500);return}
-  let id=1;while(net.conns.has(id))id++;conn.pid=id;net.conns.set(id,conn);net.others.set(id,{name:'Spieler'});
-  conn.send({t:'welcome',id,save:snapshot()});toast('Spieler '+(id+1)+' ist beigetreten');updateCoopUI()});
- conn.on('data',d=>{try{hostRecv(conn,d)}catch(e){}});
- conn.on('close',()=>{if(conn.pid&&net.conns.get(conn.pid)===conn){net.conns.delete(conn.pid);net.others.delete(conn.pid);removeAvatar(conn.pid);toast((conn.pname||'Ein Spieler')+' hat das Spiel verlassen');updateCoopUI()}})}
+ peer.on('error',err=>{clearTimeout(to);if(net.role!=='host'){coopState(err.type==='unavailable-id'?'Raumcode zufällig schon vergeben – bitte erneut hosten.':'Raum konnte nicht geöffnet werden ('+(err.type||err.message)+'). Prüfe Internetverbindung, Werbeblocker oder Firewall.',true);try{peer.destroy()}catch(e){}net.peer=null}})}
+// Beitrittsanfragen: Gast meldet sich mit Name + Version, Host bestätigt oder lehnt ab.
+const joinReqs=[];
+function hostAccept(conn){conn.joinT=setTimeout(()=>{if(!conn.open&&!conn.pid){toast('Ein Spieler wollte beitreten, aber die Direktverbindung kam nicht zustande (Firewall/VPN/Netz).')}},20000);
+ conn.on('open',()=>{clearTimeout(conn.joinT);if(net.conns.size>=3){conn.send({t:'full'});setTimeout(()=>conn.close(),500);return}
+  conn.helloT=setTimeout(()=>{if(!conn.asked){try{conn.close()}catch(e){}}},10000)});
+ conn.on('data',d=>{try{if(!conn.pid)hostPreJoin(conn,d);else hostRecv(conn,d)}catch(e){}});
+ conn.on('close',()=>{clearTimeout(conn.joinT);const i=joinReqs.indexOf(conn);if(i>=0){joinReqs.splice(i,1);renderJoinReqs()}
+  if(conn.pid&&net.conns.get(conn.pid)===conn){net.conns.delete(conn.pid);net.others.delete(conn.pid);removeAvatar(conn.pid);toast((conn.pname||'Ein Spieler')+' hat das Spiel verlassen');updateCoopUI()}})}
+function hostPreJoin(conn,d){if(!d||typeof d!=='object'||d.t!=='hello'||conn.asked)return;conn.asked=true;clearTimeout(conn.helloT);
+ const name=(typeof d.name==='string'?d.name:'').replace(/[\u0000-\u001f\u007f<>]/g,'').trim().slice(0,16)||'Spieler';conn.pname=name;
+ if(!isInt(d.ver,0,1e6)||d.ver!==GAME_VER){conn.send({t:'denied',why:'version',host:GAME_VER});toast(name+' hat eine andere Spielversion ('+d.ver+' statt '+GAME_VER+') – beide Seite neu laden (Strg+F5).');setTimeout(()=>conn.close(),800);return}
+ if(net.conns.size+joinReqs.length>=3){conn.send({t:'full'});setTimeout(()=>conn.close(),500);return}
+ conn.send({t:'wait'});conn.reqT=Date.now();joinReqs.push(conn);renderJoinReqs();toast(name+' möchte beitreten')}
+function decideJoin(conn,ok){const i=joinReqs.indexOf(conn);if(i<0)return;joinReqs.splice(i,1);renderJoinReqs();if(!conn.open)return;
+ if(!ok){conn.send({t:'denied',why:'host'});setTimeout(()=>conn.close(),800);toast(conn.pname+' abgelehnt');return}
+ if(net.conns.size>=3){conn.send({t:'full'});setTimeout(()=>conn.close(),500);return}
+ let id=1;while(net.conns.has(id))id++;conn.pid=id;net.conns.set(id,conn);net.others.set(id,{name:conn.pname});
+ conn.send({t:'welcome',id,save:snapshot()});toast(conn.pname+' ist beigetreten');updateCoopUI()}
+function renderJoinReqs(){const el=$('joinreq');if(!joinReqs.length){el.style.display='none';el.innerHTML='';return}el.style.display='block';
+ el.innerHTML=joinReqs.map((c,i)=>{const left=Math.max(0,60-Math.floor((Date.now()-c.reqT)/1000));return`<div class="jr"><span><b>${esc(c.pname)}</b> möchte beitreten <span class="mut">(${left} s)</span></span><button class="b" data-jr="${i}:1">Annehmen</button><button class="b sec" data-jr="${i}:0">Ablehnen</button></div>`}).join('')}
+$('joinreq').addEventListener('click',e=>{const b=e.target.closest('[data-jr]');if(!b)return;const[i,ok]=b.dataset.jr.split(':');const c=joinReqs[+i];if(c)decideJoin(c,ok==='1')});
+setInterval(()=>{for(const c of[...joinReqs])if(Date.now()-c.reqT>60000)decideJoin(c,false);if(joinReqs.length)renderJoinReqs()},1000);
 function hostRecv(conn,d){if(!conn.pid||!d||typeof d!=='object')return;
  if(d.t==='pos'){const o=net.others.get(conn.pid);if(!o)return;if([d.x,d.y,d.z,d.yaw].every(v=>isNum(v,-1e4,1e4))){o.x=d.x;o.y=d.y;o.z=d.z;o.yaw=d.yaw}
   if(typeof d.name==='string'){o.name=d.name.slice(0,16);conn.pname=o.name}return}
@@ -1040,21 +1063,38 @@ function syncMsg(){return{t:'sync',inv,tier,goal,gadgets,td:{day:td.day,t:+td.t.
  m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1]),m.disp||0,m.name||0]),
  b:[...belts.entries()].map(([k,b])=>[k,b.items.map(i=>[i.item,+i.p.toFixed(2)])])}}
 // --- Mitspieler ---
+// Gast: Verbindungsaufbau in Schritten mit Diagnose
+const STEPS=['Netzwerkbibliothek','Vermittlungsserver','Raum gefunden','Direktverbindung','Bestätigung durch den Host','Welt übertragen'];
+let stepState=[];
+function steps(i,st,note){if(i===-1){stepState=[];}else{stepState[i]=st;if(st==='ok'||st==='bad')for(let j=0;j<i;j++)if(stepState[j]!=='bad')stepState[j]='ok'}
+ const el=$('coopsteps');if(!stepState.length){el.innerHTML='';return}
+ el.innerHTML=STEPS.map((n,j)=>{const s=stepState[j];return`<li class="${s||'todo'}">${s==='ok'?'✓':s==='bad'?'✗':s==='run'?'…':'·'} ${n}</li>`}).join('')+(note?`<li class="why">${esc(note)}</li>`:'')}
 async function joinGame(){if(net.role!=='solo'||net.peer)return;const code=($('joincode').value||'').trim().toUpperCase();
  if(!/^[A-Z0-9]{5}$/.test(code))return coopState('Bitte den 5-stelligen Raumcode eingeben.',true);
- if(typeof RTCPeerConnection==='undefined')return coopState('WebRTC ist hier nicht verfügbar. Öffne das Spiel auf frozenenenen.github.io/Satiscraft.',true);
- coopState('Verbinde…');try{await loadPeer()}catch(e){return coopState(e.message,true)}
- let peer;try{peer=new(PeerC())({debug:0})}catch(e){return coopState('Koop nicht möglich: '+e.message,true)}net.peer=peer;
- const fail=t=>{coopState(t,true);try{peer.destroy()}catch(e){}net.peer=null;net.host=null};
- const to=setTimeout(()=>{if(net.role!=='client')fail('Keine Antwort vom Host. Ist der Raum noch offen?')},15000);
- peer.on('open',()=>{const conn=peer.connect(NET_PREFIX+code,{reliable:true});net.host=conn;
-  conn.on('open',()=>coopState('Verbunden, lade Welt…'));
-  conn.on('data',d=>{try{clientRecv(d)}catch(e){}});
-  conn.on('close',()=>{clearTimeout(to);if(net.role==='client'){leaveCoop('Die Verbindung zum Host wurde getrennt.')}})});
- peer.on('error',err=>{clearTimeout(to);if(net.role==='client')return leaveCoop('Verbindungsfehler: '+(err.type||err.message));
-  fail(err.type==='peer-unavailable'?'Raum nicht gefunden – Code prüfen.':'Verbindung fehlgeschlagen ('+(err.type||err.message)+').')})}
+ const env=envProblem();if(env)return coopState(env,true);
+ steps(-1);steps(0,'run');coopState('Verbinde…');try{await loadPeer()}catch(e){steps(0,'bad','Die Netzwerkbibliothek konnte nicht geladen werden: Internetverbindung, Werbe-/Skriptblocker oder cdnjs gesperrt.');return coopState('Verbindung fehlgeschlagen.',true)}
+ steps(0,'ok');steps(1,'run');
+ let peer;try{peer=new(PeerC())({debug:0})}catch(e){return coopState('Koop nicht möglich: '+e.message,true)}net.peer=peer;let stage=1;
+ const fail=(i,why)=>{clearTimeout(tSig);clearTimeout(tConn);clearTimeout(tWait);steps(i,'bad',why);coopState('Beitritt fehlgeschlagen.',true);try{peer.destroy()}catch(e){}net.peer=null;net.host=null};
+ let tConn=0,tWait=0;
+ const tSig=setTimeout(()=>{if(stage===1)fail(1,'Der Vermittlungsserver (0.peerjs.com) antwortet nicht: keine Internetverbindung, Werbe-/Skriptblocker oder Firmen-Firewall.')},12000);
+ peer.on('open',()=>{clearTimeout(tSig);stage=2;steps(1,'ok');steps(2,'run');const conn=peer.connect(NET_PREFIX+code,{reliable:true});net.host=conn;
+  // Wird der Raum gefunden, baut PeerJS die Direktverbindung auf; kommt sie nicht zustande, blockiert meist eine Firewall/VPN.
+  tConn=setTimeout(()=>{if(stage<=3)fail(3,'Die Direktverbindung zum Host kam nicht zustande. Häufige Ursachen: VPN, Firmen-/Schulnetz, strenge Router-Firewall oder Mobilfunk-NAT. Versuch: VPN aus, anderes WLAN oder Handy-Hotspot. Der Host kann es auch umgekehrt versuchen (du hostest).')},20000);
+  setTimeout(()=>{if(stage===2){stage=3;steps(2,'ok');steps(3,'run')}},2500);
+  conn.on('open',()=>{clearTimeout(tConn);stage=4;steps(3,'ok');steps(4,'run');conn.send({t:'hello',name:myName(),ver:GAME_VER});
+   tWait=setTimeout(()=>{if(stage===4)fail(4,'Der Host hat nicht reagiert. Er muss die Anfrage oben im Bild annehmen – vielleicht ist sein Tab im Hintergrund oder er ist abwesend.')},75000)});
+  conn.on('data',d=>{try{if(d&&d.t==='wait'){coopState('Warte auf Bestätigung durch den Host…')}else if(d&&d.t==='denied'){stage=9;
+    fail(4,d.why==='version'?'Der Host nutzt eine andere Spielversion ('+(isInt(d.host,0,1e6)?d.host:'?')+', du '+GAME_VER+'). Beide laden die Seite neu (Strg+F5) und versuchen es erneut.':'Der Host hat die Anfrage abgelehnt.')}
+   else{if(d&&d.t==='welcome'){clearTimeout(tWait);stage=5;steps(4,'ok');steps(5,'ok')}clientRecv(d)}}catch(e){}});
+  conn.on('close',()=>{if(net.role==='client'){leaveCoop('Die Verbindung zum Host wurde getrennt.')}else if(stage<5&&stage!==9)fail(Math.max(3,stage),'Die Verbindung wurde vom Host geschlossen (Raum voll, abgelehnt oder Host hat den Raum verlassen).')})});
+ peer.on('error',err=>{if(net.role==='client')return leaveCoop('Verbindungsfehler: '+(err.type||err.message));
+  if(err.type==='peer-unavailable')fail(2,'Raum '+code+' nicht gefunden. Ursachen: Code vertippt, Host hat den Raum geschlossen oder den Tab zugemacht, oder ihr habt unterschiedliche Spielversionen – beide Seite neu laden (Strg+F5).');
+  else if(['network','server-error','socket-error','socket-closed'].includes(err.type))fail(1,'Keine Verbindung zum Vermittlungsserver ('+err.type+'): Internetverbindung, Werbe-/Skriptblocker oder Firewall prüfen.');
+  else if(err.type==='webrtc'||err.type==='browser-incompatible')fail(3,'Der Browser konnte keine Direktverbindung aufbauen ('+err.type+'). Aktuellen Chrome, Edge oder Firefox verwenden.');
+  else fail(Math.min(stage,3),'Fehler: '+(err.type||err.message))})}
 function clientRecv(d){if(!d||typeof d!=='object')return;
- if(d.t==='full'){coopState('Der Raum ist voll (max. 4 Spieler).',true);try{net.peer.destroy()}catch(e){}net.peer=null;net.host=null;return}
+ if(d.t==='full'){steps(4,'bad','Der Raum ist voll (max. 4 Spieler).');coopState('Der Raum ist voll (max. 4 Spieler).',true);try{net.peer.destroy()}catch(e){}net.peer=null;net.host=null;return}
  if(d.t==='welcome'){const sv=sanitize(d.save);if(!sv||!isInt(d.id,1,3))return;net.role='client';net.id=d.id;newWorld(sv.seed,sv);
   if(sv.P){P.x=(sv.P.x??64)+1.5;P.z=sv.P.z??64;P.y=(sv.P.y??40)+.5}
   coopState('Verbunden als Spieler '+(net.id+1)+'. Inventar und Fortschritt teilt ihr euch.');updateCoopUI();toast('Koop beigetreten');return}
@@ -1084,7 +1124,7 @@ function applyTdSync(t){if(!t||typeof t!=='object')return;if(isInt(t.day,1,1e7))
   let e=enemies.find(q=>q.id===r[0]);if(!e)e=spawnEnemy(r[1],r[4],r[0],Math.min(r[2],route.length-1));if(Math.abs(e.s-r[2])>1.5)e.s=Math.min(r[2],route.length-1);e.hp=r[3];e.max=r[4]}
  for(const e of[...enemies])if(!seen.has(e.id))removeEnemy(e,true)}
 function leaveCoop(msg){const wasClient=net.role==='client';
- for(const c of net.conns.values())try{c.close()}catch(e){}net.conns.clear();try{net.peer&&net.peer.destroy()}catch(e){}
+ for(const c of net.conns.values())try{c.close()}catch(e){}net.conns.clear();try{net.host&&net.host.close()}catch(e){}for(const c of[...joinReqs])try{c.close()}catch(e){}joinReqs.length=0;renderJoinReqs();try{net.peer&&net.peer.destroy()}catch(e){}
  net.peer=null;net.host=null;net.role='solo';net.others.clear();for(const id of[...avatars.keys()])removeAvatar(id);updateCoopUI();
  if(wasClient){// eigene Welt wiederherstellen
   let sv=null;try{const raw=localStorage.getItem(KEY);if(raw&&raw.length<2e7)sv=sanitize(JSON.parse(raw))}catch(e){}

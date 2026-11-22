@@ -38,6 +38,9 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 .cm b{font-size:11px}.cm i{font-style:normal;font-size:10px;color:#cfd5db}
 .cm.base{color:#f29a2e}.cm.bk{color:#4fe3ff}.cm.edge{opacity:.85}
 @media(max-width:1300px){#goal{top:100px}#coophud{top:100px}#radar{top:144px}}
+#coopsteps{list-style:none;margin:6px 0 0;padding:0;font-size:14px}#coopsteps li{padding:2px 0}#coopsteps .ok{color:var(--ok)}#coopsteps .bad{color:var(--bad);font-weight:700}#coopsteps .run{color:var(--acc)}#coopsteps .todo{color:#6b737c}#coopsteps .why{color:var(--ink);background:#3a1f1b;border-left:3px solid var(--bad);padding:8px 10px;margin-top:6px;border-radius:4px}
+#joinreq{position:fixed;z-index:25;left:50%;top:98px;transform:translateX(-50%);display:none;background:#1f2329;border:2px solid var(--acc);border-radius:8px;padding:8px 12px;box-shadow:0 10px 30px #000a}
+#joinreq .jr{display:flex;gap:10px;align-items:center;padding:4px 0}
 #tdhud{left:50%;top:66px;transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:#16191dd9;padding:4px 12px;border-radius:4px;font-size:13px;white-space:nowrap}
 #tdhud .nt{color:#9bb7ff}#tdhud .bh{display:flex;align-items:center;gap:6px}#tdhud .bh i{display:inline-block;width:90px;height:8px;background:#0008;border-radius:4px;overflow:hidden}#tdhud .bh u{display:block;height:100%}
 #tdhud .na{color:#cfd5db}
@@ -111,6 +114,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="goal" class="hud"></div>
 <div id="compass" class="hud"><div id="cstrip"></div><i class="cc"></i></div>
 <div id="tdhud" class="hud"></div>
+<div id="joinreq" role="alert"></div>
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
 <div id="coophud" class="hud"></div>
@@ -155,12 +159,13 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
     <input id="joincode" maxlength="5" placeholder="Code" aria-label="Raumcode" autocomplete="off"><button class="b sec" id="joinb">Beitreten</button>
     <button class="b sec" id="leaveb" hidden>Koop verlassen</button></div>
    <p id="coopstate" role="status" aria-live="polite"></p>
+   <ul id="coopsteps" aria-live="polite"></ul>
    <p class="mut" style="font-size:13px;margin:4px 0 0">Der Host teilt seine Welt; Inventar, Werkzeugstufe und Meilensteine sind gemeinsam. Verbindung direkt zwischen den Browsern (WebRTC) – Mitspieler sehen dabei gegenseitig ihre IP-Adresse. Der Host sollte den Tab im Vordergrund lassen.</p></div>
 </div></div>
 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=37"></script>
+<script src="game.js?v=38"></script>
 </body>
 </html>
