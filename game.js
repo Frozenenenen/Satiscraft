@@ -299,13 +299,17 @@ function buildChunk(cx,cy,cz){const c=cols.get(colKey(cx,cz));if(!c)return;
     let U,V;if(f.a===1){U=cc[0];V=cc[2]}else if(f.a===0){U=cc[2];V=cc[1]}else{U=cc[0];V=cc[1]}
     uv.push(tu+.001+U*.123,tv+.002+V*.246)}
    if(ao[0]+ao[2]>=ao[1]+ao[3])ind.push(vc,vc+1,vc+2,vc,vc+2,vc+3);else ind.push(vc+1,vc+2,vc+3,vc+1,vc+3,vc);vc+=4}}
- if(c.m[cy]){scene.remove(c.m[cy]);c.m[cy].geometry.dispose();c.m[cy]=null}
- if(!vc)return;
- const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
- g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
- g.setIndex(new THREE.BufferAttribute(new Uint32Array(ind),1));g.computeBoundingSphere();
- const m=new THREE.Mesh(g,terrainMat);scene.add(m);c.m[cy]=m}
-function hideCol(c){for(let cy=0;cy<4;cy++)if(c.m[cy]){scene.remove(c.m[cy]);c.m[cy].geometry.dispose();c.m[cy]=null}c.shown=false}
+
+ // Teilstück merken; die ganze Spalte wird einmal pro Frame zu EINEM Mesh zusammengesetzt (weniger Draw Calls)
+ c.gd=c.gd||[null,null,null,null];c.gd[cy]=vc?{pos:new Float32Array(pos),col:new Float32Array(col),uv:new Float32Array(uv),ind:new Uint32Array(ind),vc}:null;asmQ.add(c)}
+const asmQ=new Set();
+function assembleCol(c){if(cols.get(colKey(c.cx,c.cz))!==c||!c.gd)return;let vc=0,ic=0;for(const p of c.gd)if(p){vc+=p.vc;ic+=p.ind.length}
+ if(c.m[0]){scene.remove(c.m[0]);c.m[0].geometry.dispose();c.m[0]=null}if(!vc)return;
+ const pos=new Float32Array(vc*3),col=new Float32Array(vc*3),uv=new Float32Array(vc*2),ind=new Uint32Array(ic);let vo=0,io=0;
+ for(const p of c.gd){if(!p)continue;pos.set(p.pos,vo*3);col.set(p.col,vo*3);uv.set(p.uv,vo*2);for(let i=0;i<p.ind.length;i++)ind[io+i]=p.ind[i]+vo;vo+=p.vc;io+=p.ind.length}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+ g.setIndex(new THREE.BufferAttribute(ind,1));g.computeBoundingSphere();const m=new THREE.Mesh(g,terrainMat);scene.add(m);c.m[0]=m}
+function hideCol(c){for(let cy=0;cy<4;cy++)if(c.m[cy]){scene.remove(c.m[cy]);c.m[cy].geometry.dispose();c.m[cy]=null}c.gd=null;asmQ.delete(c);c.shown=false}
 function markDirty(x,y,z){const cx=x>>4,cy=y>>4,cz=z>>4,lx=x&15,ly=y&15,lz=z&15;
  for(let ax=-1;ax<=1;ax++)for(let ay=-1;ay<=1;ay++)for(let az=-1;az<=1;az++){
   if((ax===-1&&lx!==0)||(ax===1&&lx!==CS-1)||(ay===-1&&ly!==0)||(ay===1&&ly!==CS-1)||(az===-1&&lz!==0)||(az===1&&lz!==CS-1))continue;
@@ -1144,7 +1148,7 @@ function renderPerf(avg,js,sec){const el=$('perf'),col=perf.fps>=55?'ok':perf.fp
    if(ri.render.calls>900)tips.push('Sehr viele Draw Calls ('+ri.render.calls+') – Sichtweite senken.');
    if(perf.max>100)tips.push('Einzelne Ruckler bis '+perf.max.toFixed(0)+' ms (z. B. Speichern, Weltladen).')}
   h+=tips.length?`<div class="tip">${tips.map(esc).join('<br>')}</div>`:'';h+='<div class="pfb"><button class="b sec" data-pcopy="1">Bericht kopieren (F4)</button><span class="mut">F3: weiter / aus</span></div>'}
- el.innerHTML=h;perf.text=el.innerText.replace(/Bericht kopieren \(F4\)\s*F3: weiter \/ aus/,'').trim();
+ el.innerHTML=h;perf.text=(el.innerText||'').replace(/Bericht kopieren \(F4\)\s*F3: weiter \/ aus/,'').trim();
  if(perfMode===2){const c=$('pfg'),x=c.getContext('2d');x.clearRect(0,0,240,44);x.strokeStyle='#ffffff22';[16.7,33.3].forEach(v=>{const y=44-v;x.beginPath();x.moveTo(0,y);x.lineTo(240,y);x.stroke()});
   for(let i=0;i<240;i++){const v=perf.hist[(perf.hi+i)%240];x.fillStyle=v>33.4?'#ef5a4c':v>17.5?'#e8b04a':'#5fcf6f';x.fillRect(i,44-Math.min(44,v),1,Math.min(44,v))}}}
 $('perf').style.display=perfMode?'block':'none';
@@ -1182,7 +1186,7 @@ function frame(now){
    for(const e of a.emit){tmpV.set(e.p[0],e.p[1],e.p[2]);m.g.localToWorld(tmpV);emit(tmpV,e.k)}}}}
  updateParts(dt);pm('Animation & Partikel');
  gameTime+=dt;updateDecay();
- let n=0;for(const k of dirty){dirty.delete(k);const cy=k%4,ck=(k-cy)/4,cx=Math.floor(ck/131072)-65536,cz=ck%131072-65536;buildChunk(cx,cy,cz);if(++n>=8)break}pm('Chunk-Meshes');
+ let n=0;for(const k of dirty){dirty.delete(k);const cy=k%4,ck=(k-cy)/4,cx=Math.floor(ck/131072)-65536,cz=ck%131072-65536;buildChunk(cx,cy,cz);if(++n>=8)break}for(const c of asmQ)assembleCol(c);asmQ.clear();pm('Chunk-Meshes');
  stream(dt,6);pm('Weltgenerierung');
  // Ziel & Abbau
  const h=locked&&!buildType?raycast(6):null;let info='';
