@@ -41,7 +41,7 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 .slot .l{position:absolute;bottom:-1px;left:4px;color:var(--mut);font-size:10px}
 #tool{background:#16191dd9;padding:3px 12px;border-radius:4px;font-size:13px}
 #keys{font-size:12px;color:#cfd5db;text-shadow:0 1px 2px #000}
-#toast{left:50%;top:30%;transform:translateX(-50%);background:#16191de6;border:1px solid var(--acc);padding:8px 18px;border-radius:4px;opacity:0;transition:opacity .3s}
+#toast{z-index:30;left:50%;top:30%;transform:translateX(-50%);background:#16191de6;border:1px solid var(--acc);padding:8px 18px;border-radius:4px;opacity:0;transition:opacity .3s}
 .ov{position:fixed;inset:0;z-index:10;display:none;place-items:center;background:#0b0d10b3}
 .ov.on{display:grid}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;width:min(860px,94vw);max-height:88vh;overflow:auto;padding:22px 26px;box-shadow:0 20px 60px #000a}
@@ -62,6 +62,8 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
 button.b{background:var(--acc);color:#1a1206;border:0;border-radius:4px;padding:8px 14px;font:700 14px "Chakra Petch",sans-serif;cursor:pointer;min-height:36px}
 button.b.sec{background:#353b44;color:var(--ink)}
+button.b.ok{background:var(--ok);color:#06210b}button.b.err{background:var(--bad);color:#fff}
+#savestate{margin:10px 0 0;font-size:13px;color:var(--mut);min-height:1.4em}#savestate.err{color:var(--bad)}
 button.b:disabled{opacity:.4;cursor:default}
 button.b:focus-visible{outline:2px solid #fff}
 .recs{display:flex;flex-wrap:wrap;gap:8px}
@@ -107,11 +109,12 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
     <p>Bessere Spitzhacken entstehen an der Werkbank aus verarbeiteten Ressourcen und schalten härtere Erze frei.</p></div>
   </div>
   <div class="btns"><button class="b" id="play">Spielen</button><button class="b sec" id="saveb">Speichern</button><button class="b sec" id="newb">Neue Welt</button></div>
+  <p id="savestate" role="status" aria-live="polite"></p>
 </div></div>
 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=6"></script>
+<script src="game.js?v=7"></script>
 </body>
 </html>

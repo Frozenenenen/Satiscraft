@@ -416,7 +416,11 @@ function tryPlace(){if(!place)return;if(place.err){toast(place.err);return}const
 function save(){try{const data={seed,changes:[...changes],res:[...reserves],inv,tier,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
  machines:machines.map(m=>({t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o:m.outBuf,rc:m.recipe})),
  belts:[...belts.values()].map(b=>[b.x,b.y,b.z,b.dir,b.items.map(i=>i.item)])};
- localStorage.setItem(KEY,JSON.stringify(data));toast('Spiel gespeichert')}catch(e){toast('Speichern in diesem Browser nicht möglich')}}
+ localStorage.setItem(KEY,JSON.stringify(data));lastSave=new Date();toast('Spiel gespeichert');saveFeedback(true);return true}catch(e){toast('Speichern in diesem Browser nicht möglich');saveFeedback(false);return false}}
+let lastSave=null,saveFbT=0;
+function saveFeedback(ok){const b=$('saveb'),st=$('savestate');b.textContent=ok?'Gespeichert':'Fehlgeschlagen';b.classList.toggle('ok',ok);b.classList.toggle('err',!ok);
+ clearTimeout(saveFbT);saveFbT=setTimeout(()=>{b.textContent='Speichern';b.classList.remove('ok','err')},2000);
+ st.textContent=ok?'Zuletzt gespeichert: '+lastSave.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Speichern fehlgeschlagen – der Browser blockiert den lokalen Speicher (z. B. privates Fenster).';st.classList.toggle('err',!ok)}
 // Speicherstand kommt aus localStorage (gleiche Origin, z. B. andere Pages-Seiten desselben Kontos) – nur validierte Daten übernehmen.
 const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
 const isInt=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b;
