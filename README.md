@@ -22,7 +22,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 | Shift + Ziehen | Förderbänder als Linie legen, jedes Band zeigt in Zugrichtung |
 | E | Maschine öffnen |
 | I | Inventar |
-| F / Shift+F | Erzradar: nächste Erzart / zurück (Kohle, Kupfer, Eisen, Gold, Titan, aus) |
+| F / Shift+F | Erzradar: nächste Erzart / zurück (Kohle, Kupfer, Eisen, Gold, Titan, aus). Das Radar stellst du an der Werkbank her (4 Kupferbarren, 2 Eisenbarren). |
 
 ## Spielprinzip
 
