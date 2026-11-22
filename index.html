@@ -72,6 +72,9 @@ button.b.ok{background:var(--ok);color:#06210b}button.b.err{background:var(--bad
 #savestate{margin:10px 0 0;font-size:13px;color:var(--mut);min-height:1.4em}#savestate.err{color:var(--bad)}
 button.b:disabled{opacity:.4;cursor:default}
 button.b:focus-visible{outline:2px solid #fff}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;border-bottom:2px solid var(--line)}
+.tab{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--ink);font:600 15px "Chakra Petch",sans-serif;padding:8px 12px;cursor:pointer;min-height:40px}
+.tab.on{border-bottom-color:var(--acc);color:var(--acc)}.tab:hover{color:var(--acc)}.tab:focus-visible{outline:2px solid var(--acc)}
 .recs{display:flex;flex-wrap:wrap;gap:8px}
 .rec{background:#262b32;border:2px solid var(--line);color:inherit;font:inherit;border-radius:6px;padding:6px 10px;cursor:pointer}
 .rec.on{border-color:var(--acc)}
@@ -130,6 +133,6 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=18"></script>
+<script src="game.js?v=19"></script>
 </body>
 </html>

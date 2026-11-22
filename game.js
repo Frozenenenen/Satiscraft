@@ -39,6 +39,9 @@ const BUILD={
  foundry:{n:'Gießerei',w:3,d:3,h:3,cost:{iron_plate:15,wire:10,stone:30},ins:[[0,-1,0],[2,-1,0]],outs:[[1,3,0]],desc:'Eisenerz + Kohle → Stahl. Zwei Eingänge.'},
  assembler:{n:'Monteur',w:3,d:3,h:3,cost:{steel:10,wire:20,iron_plate:10},ins:[[0,-1,0],[2,-1,0]],outs:[[1,3,0]],desc:'Motoren und Schaltkreise. Zwei Eingänge.'},
  miner2:{n:'Miner Mk2',w:2,d:2,h:3,cost:{titan_bar:10,motor:4,circuit:4},ins:[],outs:[[0,2,0]],miner:1,tier:4,period:1,desc:'Schneller, fördert alle Erze inkl. Gold und Titan.'}};
+const CATS=[['abbau','Abbau',['miner1','miner2']],['verarbeitung','Verarbeitung',['smelter','constructor','foundry','assembler']],
+ ['logistik','Logistik',['belt','splitter','merger','bridge1','bridge3']],['lager','Lager',['chest','container','warehouse']],['werkstatt','Werkstatt',['workbench']]];
+let buildCat=0;try{const c=+localStorage.getItem('satiscraft-cat');if(c>=0&&c<CATS.length)buildCat=c}catch(e){}
 const RECIPES={
  smelter:[{in:{iron_ore:1},out:{iron_bar:1},t:2},{in:{copper_ore:1},out:{copper_bar:1},t:2},{in:{gold_ore:1},out:{gold_bar:1},t:3},{in:{titan_ore:1},out:{titan_bar:1},t:4}],
  constructor:[{in:{iron_bar:2},out:{iron_plate:1},t:3},{in:{iron_bar:1},out:{rod:1},t:2},{in:{copper_bar:1},out:{wire:2},t:2}],
@@ -397,8 +400,9 @@ function bufRows(buf,act,label){const ks=Object.keys(buf);if(!ks.length)return'<
 function renderPanel(){
  if(!panel)return;const pc=$('pc');let h='';const x=`<button class="b sec" data-act="close">Schließen</button>`;
  if(panel.kind==='build'){
-  h=`<h2>Baumenü ${x}</h2><p class="mut">Maschinen brauchen eine ebene, freie Fläche in voller Höhe. Wähle ein Gebäude, dann LMB zum Platzieren, R zum Drehen.</p><div class="grid">`+
-   Object.keys(BUILD).map(k=>{const d=BUILD[k];return`<button class="bcard ${has(d.cost)?'':'no'}" data-act="build:${k}"><b>${d.n}</b> <span class="mut">${d.w}×${d.d}, Höhe ${d.h}</span><div class="mut" style="font-size:13px">${d.desc}</div>${costHtml(d.cost)}</button>`}).join('')+'</div>'}
+  h=`<h2>Baumenü ${x}</h2><div class="tabs" role="tablist">${CATS.map((c,i)=>`<button class="tab ${i===buildCat?'on':''}" role="tab" aria-selected="${i===buildCat}" data-act="cat:${i}"><span class="mut">${i+1}</span> ${c[1]} <span class="mut">(${c[2].length})</span></button>`).join('')}</div>
+   <p class="mut">Maschinen brauchen eine ebene, freie Fläche in voller Höhe. Wähle ein Gebäude, dann LMB zum Platzieren, R zum Drehen.</p><div class="grid">`+
+   CATS[buildCat][2].map(k=>{const d=BUILD[k];return`<button class="bcard ${has(d.cost)?'':'no'}" data-act="build:${k}"><b>${d.n}</b> <span class="mut">${d.w}×${d.d}, Höhe ${d.h}</span><div class="mut" style="font-size:13px">${d.desc}</div>${costHtml(d.cost)}</button>`}).join('')+'</div>'}
  else if(panel.kind==='inv'){
   const ks=Object.keys(inv);h=`<h2>Inventar ${x}</h2><p>Werkzeug: <b>${TOOLS[tier].n}</b> <span class="mut">(Stufe ${tier})</span></p><div class="grid">`+
    (ks.length?ks.map(k=>`<div class="row">${sw(k)}<b>${inv[k]}</b></div>`).join(''):'<p class="mut">Noch leer – baue etwas ab.</p>')+'</div>'+
@@ -423,6 +427,7 @@ addEventListener('pointerup',()=>setTimeout(()=>{panelHold=false},0));
 addEventListener('pointercancel',()=>{panelHold=false});
 $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const[act,arg]=b.dataset.act.split(':');const m=panel&&panel.m;
  if(act==='close')return closePanel();
+ if(act==='cat'){const i=+arg;if(i>=0&&i<CATS.length){buildCat=i;try{localStorage.setItem('satiscraft-cat',String(i))}catch(e){}}renderPanel();return}
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
  if(m&&PANEL_ACTS.includes(act)){if(net.role==='client')netSend({t:'act',a:'panel',k:m.cells[0],act,arg});else panelAct(m,act,arg)}
  renderPanel();renderHotbar()});
@@ -445,7 +450,8 @@ function renderGoal(){while(net.role!=='client'&&goal<GOALS.length-1&&GOALS[goal
 // ---------- Eingabe ----------
 addEventListener('keydown',e=>{
  if(['Tab','Space'].includes(e.code))e.preventDefault();
- if(panel){if(['Escape','KeyE','KeyI','KeyQ','Tab'].includes(e.code))closePanel();return}
+ if(panel){if(panel.kind==='build'&&e.code.startsWith('Digit')){const i=+e.code.slice(5)-1;if(i>=0&&i<CATS.length){buildCat=i;try{localStorage.setItem('satiscraft-cat',String(i))}catch(e){}renderPanel()}return}
+  if(['Escape','KeyE','KeyI','KeyQ','Tab'].includes(e.code))closePanel();return}
  if(!locked)return;if(e.code==='Escape')return pause();keys[e.code]=true;
  if(e.code.startsWith('Digit')){const n=+e.code.slice(5)-1;if(n>=0&&n<PLACE.length){selSlot=n;renderHotbar()}}
  if(e.code==='KeyQ'){if(buildType){buildType=null}else openPanel('build')}
