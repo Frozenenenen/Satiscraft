@@ -540,7 +540,10 @@ function raycast(max){
  let x=Math.floor(ox),y=Math.floor(oy),z=Math.floor(oz);const sx=Math.sign(dx),sy=Math.sign(dy),sz=Math.sign(dz);
  const tdx=dx?Math.abs(1/dx):Infinity,tdy=dy?Math.abs(1/dy):Infinity,tdz=dz?Math.abs(1/dz):Infinity;
  let tx=dx?(dx>0?x+1-ox:ox-x)*tdx:Infinity,ty=dy?(dy>0?y+1-oy:oy-y)*tdy:Infinity,tz=dz?(dz>0?z+1-oz:oz-z)*tdz:Infinity;let n=[0,0,0],t=0;
- while(t<=max){const id=y<0?0:get(x,y,z);if(id)return{x,y,z,id,n};
+ while(t<=max){const id=y<0?0:get(x,y,z);
+  // Bänder sind flach: nur treffen, wenn der Strahl in dieser Zelle wirklich bis auf Bandhöhe kommt – zählt dann als Treffer von oben
+  if(id===BELT){const te=Math.min(tx,ty,tz),ya=oy+dy*t,yb=oy+dy*te;if(Math.min(ya,yb)<=y+.25)return{x,y,z,id,n:[0,1,0]}}
+  else if(id)return{x,y,z,id,n};
   if(tx<ty&&tx<tz){x+=sx;t=tx;tx+=tdx;n=[-sx,0,0]}else if(ty<tz){y+=sy;t=ty;ty+=tdy;n=[0,-sy,0]}else{z+=sz;t=tz;tz+=tdz;n=[0,0,-sz]}}
  return null}
 const facing=()=>{const fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw);return Math.abs(fx)>Math.abs(fz)?(fx>0?3:1):(fz>0?0:2)};
