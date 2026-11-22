@@ -81,10 +81,12 @@ let heights=new Int16Array(W*D);
 function generate(){
  world.fill(0);reserves.clear();
  const rnd=mulberry(seed*7919+13);
+ const rawH=(x,z)=>{const b=fbm(x/38,z/38,4),m=fbm(x/80+31.7,z/80+11.3,3);return Math.max(6,Math.min(H-12,Math.floor(12+b*16+Math.max(0,m-.52)*70)))};
+ // Startplatz an die Umgebungshöhe angleichen (Mittel über einen Ring), damit keine Grube entsteht
+ let hc=0;for(let i=0;i<16;i++){const a=i/16*Math.PI*2;hc+=rawH(64+Math.round(Math.cos(a)*14),64+Math.round(Math.sin(a)*14))}hc=Math.round(hc/16);
  for(let x=0;x<W;x++)for(let z=0;z<D;z++){
-  const b=fbm(x/38,z/38,4),m=fbm(x/80+31.7,z/80+11.3,3);
-  let h=Math.floor(12+b*16+Math.max(0,m-.52)*70);h=Math.max(6,Math.min(H-12,h));
-  const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const t=dd/14;h=Math.round(h*t+20*(1-t))}
+  let h=rawH(x,z);
+  const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const t=dd/14;h=Math.round(h*t+hc*(1-t))}
   heights[x+z*W]=h;
   for(let y=0;y<=h;y++){let id=y===0?12:y<h-3?3:y<h?2:1;
    if(h<=14&&y>=h-2)id=4;if(h>32&&y>=h-1)id=3;world[idx(x,y,z)]=id}
