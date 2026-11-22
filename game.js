@@ -589,7 +589,7 @@ function buildViewModel(key){vmPivot.clear();const sleeve=net.role==='solo'?PCOL
  const hold=new THREE.Group();hold.position.set(0,.03,-.6);vmPivot.add(hold);
  if(buildType){hold.rotation.set(-1.05,.25,0);vb(hold,0x23272c,.32,.022,.24,0,.06,-.02);vb(hold,0x3d78c2,.27,.006,.19,0,.075,-.02,1);
   vb(hold,0xf29a2e,.12,.008,.04,-.05,.08,-.06,1);vb(hold,0xf29a2e,.04,.008,.08,.06,.08,.02,1)}
- else if(tier>0){hold.rotation.set(-.35,0,-.15);vb(hold,0x7a5232,.045,.62,.045,0,.16,0);const hc=TOOLCOL[tier];
+ else if(tier>0){hold.rotation.set(-.55,0,-.42);hold.scale.setScalar(.72);vb(hold,0x7a5232,.045,.62,.045,0,.16,0);const hc=TOOLCOL[tier];
   vb(hold,hc,.46,.075,.075,0,.45,0);const l=vb(hold,hc,.16,.06,.06,-.27,.41,0);l.rotation.z=.45;const r=vb(hold,hc,.16,.06,.06,.27,.41,0);r.rotation.z=-.45;
   if(tier===4){vb(hold,0x9fd4ff,.06,.08,.08,0,.45,0,1)}}
  else{vb(vmPivot,0xd8a77f,.16,.07,.08,0,.03,-.62)} // Faust
@@ -603,8 +603,8 @@ function updateViewModel(dt){
  const moving=locked&&P.ground&&(keys.KeyW||keys.KeyA||keys.KeyS||keys.KeyD);vmBob+=dt*(moving?(keys.ShiftLeft||keys.ShiftRight?13:9):0);
  if(vmPunch>0)vmPunch=Math.max(0,vmPunch-dt);if(vmEquip>0)vmEquip=Math.max(0,vmEquip-dt*4);
  const sw=Math.sin(vmSwing)*(vmSwing?1:0),pu=Math.sin(vmPunch/.3*Math.PI);
- vmPivot.position.set(.42+Math.cos(vmBob)*.018,-.5+Math.abs(Math.sin(vmBob))*.025-vmEquip*.35-Math.max(0,sw)*.05,-.32-pu*.08);
- vmPivot.rotation.set(.08-Math.max(0,sw)*1.05-pu*.4,.12+sw*.1,0)}
+ vmPivot.position.set(.5+Math.cos(vmBob)*.018,-.52+Math.abs(Math.sin(vmBob))*.025-vmEquip*.35-Math.max(0,sw)*.05,-.32-pu*.08);
+ vmPivot.rotation.set(.1-Math.max(0,sw)*1.05-pu*.4,.05+sw*.1,0)}
 
 // ---------- Hauptschleife ----------
 let last=performance.now(),slow=0,saveT=0,time=0;
