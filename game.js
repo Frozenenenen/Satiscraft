@@ -290,8 +290,9 @@ function movePlayer(dt){
  P.vy=Math.max(-40,P.vy-26*dt);const ny=P.y+P.vy*dt;
  if(collides(P.x,ny,P.z)){if(P.vy<0){const sy=Math.floor(ny)+1;if(!collides(P.x,sy,P.z))P.y=sy;P.ground=true}P.vy=0}else{P.y=ny;P.ground=false}
  if(P.y<-10){P.y=heights[Math.floor(P.x)+Math.floor(P.z)*W]+2;P.vy=0}}
+const aimV=new THREE.Vector3(),mouse={x:0,y:0};let mouseR=false,dragDist=0;
 function raycast(max){
- const ox=P.x,oy=P.y+1.62,oz=P.z,cp=Math.cos(P.pitch);const dx=-Math.sin(P.yaw)*cp,dy=Math.sin(P.pitch),dz=-Math.cos(P.yaw)*cp;
+ const ox=P.x,oy=P.y+1.62,oz=P.z;camera.updateMatrixWorld();aimV.set(mouse.x,mouse.y,.5).unproject(camera).sub(camera.position).normalize();const dx=aimV.x,dy=aimV.y,dz=aimV.z;
  let x=Math.floor(ox),y=Math.floor(oy),z=Math.floor(oz);const sx=Math.sign(dx),sy=Math.sign(dy),sz=Math.sign(dz);
  const tdx=dx?Math.abs(1/dx):Infinity,tdy=dy?Math.abs(1/dy):Infinity,tdz=dz?Math.abs(1/dz):Infinity;
  let tx=dx?(dx>0?x+1-ox:ox-x)*tdx:Infinity,ty=dy?(dy>0?y+1-oy:oy-y)*tdy:Infinity,tz=dz?(dz>0?z+1-oz:oz-z)*tdz:Infinity;let n=[0,0,0],t=0;
@@ -305,14 +306,14 @@ const $=id=>document.getElementById(id);
 let panel=null,locked=false,buildType=null,rotOff=0,ghost=null,ghostType=null,selSlot=0,toastT=0,mineT=0,mineKey='',lastBelt='';
 function toast(s){const t=$('toast');t.textContent=s;t.style.opacity=1;toastT=2.2}
 function showPause(resume){$('pause').classList.add('on');$('ptext').textContent=resume?'Pausiert. Klicke auf „Spielen“, um weiterzumachen.':$('ptext').textContent;$('play').textContent=resume?'Weiterspielen':'Spielen'}
-function lock(){try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(e){}}
-document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===canvas;if(locked){$('pause').classList.remove('on')}else{mouseL=false;if(!panel)showPause(true)}});
-document.addEventListener('pointerlockerror',()=>{if(!panel)showPause(true)});
-$('play').onclick=()=>lock();
+function releaseMouse(){mouseL=false;mouseR=false;canvas.classList.remove('drag');for(const k in keys)keys[k]=false}
+function resume(){$('pause').classList.remove('on');locked=true}
+function pause(){locked=false;releaseMouse();showPause(true)}
+$('play').onclick=()=>resume();
 $('saveb').onclick=()=>save();
 $('newb').onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}newWorld(Math.floor(Math.random()*1e6));toast('Neue Welt erstellt')};
-function openPanel(kind,m){panel={kind,m};$('panel').classList.add('on');renderPanel();if(document.pointerLockElement)document.exitPointerLock()}
-function closePanel(){panel=null;$('panel').classList.remove('on');showPause(true);lock()}
+function openPanel(kind,m){panel={kind,m};$('panel').classList.add('on');renderPanel();locked=false;releaseMouse()}
+function closePanel(){panel=null;$('panel').classList.remove('on');resume()}
 $('panel').addEventListener('mousedown',e=>{if(e.target.id==='panel')closePanel()});
 function costHtml(c){return`<div class="cost">${Object.keys(c).map(k=>`<span class="${(inv[k]||0)>=c[k]?'':'miss'}">${c[k]}× ${sw(k)}</span>`).join('')}</div>`}
 function bufRows(buf,act,label){const ks=Object.keys(buf);if(!ks.length)return'<p class="mut">leer</p>';
@@ -358,19 +359,23 @@ function renderGoal(){while(goal<GOALS.length-1&&GOALS[goal][1]()){goal++;if(goa
 addEventListener('keydown',e=>{
  if(['Tab','Space'].includes(e.code))e.preventDefault();
  if(panel){if(['Escape','KeyE','KeyI','KeyQ','Tab'].includes(e.code))closePanel();return}
- if(!locked)return;keys[e.code]=true;
+ if(!locked)return;if(e.code==='Escape')return pause();keys[e.code]=true;
  if(e.code.startsWith('Digit')){const n=+e.code.slice(5)-1;if(n>=0&&n<PLACE.length){selSlot=n;renderHotbar()}}
  if(e.code==='KeyQ'){if(buildType){buildType=null}else openPanel('build')}
  if(e.code==='KeyI'||e.code==='Tab')openPanel('inv');
  if(e.code==='KeyR'&&buildType)rotOff=(rotOff+1)%4;
  if(e.code==='KeyE'){const h=raycast(6);if(h&&h.id===MACH){const m=machineAt.get(idx(h.x,h.y,h.z));if(m&&m.type!=='belt'){buildType=null;openPanel('machine',m)}}}});
 addEventListener('keyup',e=>{keys[e.code]=false});
-addEventListener('blur',()=>{for(const k in keys)keys[k]=false;mouseL=false});
-document.addEventListener('mousemove',e=>{if(!locked)return;P.yaw-=e.movementX*.0022;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.0022))});
-document.addEventListener('mousedown',e=>{if(!locked)return;
+addEventListener('blur',releaseMouse);
+// Kamera dreht nur bei gedrückter rechter Maustaste; ein kurzer Rechtsklick ohne Ziehen setzt einen Block bzw. bricht den Baumodus ab.
+document.addEventListener('mousemove',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;
+ if(!locked||!mouseR)return;dragDist+=Math.abs(e.movementX)+Math.abs(e.movementY);
+ if(dragDist>4)canvas.classList.add('drag');P.yaw-=e.movementX*.004;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.004))});
+canvas.addEventListener('mousedown',e=>{if(!locked)return;
  if(e.button===0){mouseL=true;if(buildType&&buildType!=='belt')tryPlace()}
- if(e.button===2){if(buildType){buildType=null;return}placeBlock()}});
-document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt=''}});
+ if(e.button===2){mouseR=true;dragDist=0}});
+document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt=''}
+ if(e.button===2&&mouseR){mouseR=false;canvas.classList.remove('drag');if(locked&&dragDist<=4){if(buildType)buildType=null;else placeBlock()}}});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('wheel',e=>{if(!locked)return;if(buildType){rotOff=(rotOff+(e.deltaY>0?1:3))%4}else{selSlot=(selSlot+(e.deltaY>0?1:PLACE.length-1))%PLACE.length;renderHotbar()}},{passive:true});
 function placeBlock(){const h=raycast(6);if(!h)return;const[it,id]=PLACE[selSlot];if(!inv[it])return toast('Kein '+ITEMS[it][0]+' im Inventar');
@@ -469,7 +474,7 @@ function frame(now){
   if(buildType==='belt'&&mouseL){const k=place.ox+','+place.oy+','+place.oz;if(k!==lastBelt&&!place.err){lastBelt=k;tryPlace()}}}
  else if(ghost)ghost.visible=false;
  const md=$('mode');if(buildType){const d=BUILD[buildType];md.style.display='block';
-  md.innerHTML=`Baumodus: <b>${d.n}</b> (${d.w}×${d.d}) · LMB platzieren · R / Mausrad drehen · RMB abbrechen${place&&place.err?`<br><span style="color:#ff8a7e">${place.err}</span>`:''}`;info=''}
+  md.innerHTML=`Baumodus: <b>${d.n}</b> (${d.w}×${d.d}) · LMB platzieren · R / Mausrad drehen · Rechtsklick abbrechen${place&&place.err?`<br><span style="color:#ff8a7e">${place.err}</span>`:''}`;info=''}
  else md.style.display='none';
  $('info').innerHTML=info;
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').style.opacity=0}

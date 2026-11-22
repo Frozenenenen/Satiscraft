@@ -17,15 +17,15 @@
 :root{color-scheme:dark;--bg:#16191d;--panel:#1f2329;--line:#353b44;--ink:#eef0f2;--mut:#9aa3ad;--acc:#f29a2e;--ok:#5fcf6f;--bad:#ef5a4c}
 *{box-sizing:border-box;min-width:0}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:15px/1.45 "Chakra Petch",system-ui,sans-serif}
-canvas{display:block}
+canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 .hud{position:fixed;pointer-events:none;z-index:5}
 #cross{left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px}
 #cross:before,#cross:after{content:"";position:absolute;background:#fff;mix-blend-mode:difference}
 #cross:before{left:8px;top:0;width:2px;height:18px}#cross:after{top:8px;left:0;height:2px;width:18px}
-#info{left:50%;top:calc(50% + 22px);transform:translateX(-50%);text-align:center;text-shadow:0 1px 3px #000;font-weight:700;white-space:nowrap}
+#info{left:50%;bottom:150px;transform:translateX(-50%);text-align:center;text-shadow:0 1px 3px #000;font-weight:700;white-space:nowrap}
 #info small{display:block;font-weight:500;color:#dde}
 #info .bad{color:#ff8a7e}
-#bar{left:50%;top:calc(50% + 70px);width:160px;height:6px;margin-left:-80px;background:#0008;border-radius:3px;overflow:hidden;display:none}
+#bar{left:50%;bottom:136px;width:160px;height:6px;margin-left:-80px;background:#0008;border-radius:3px;overflow:hidden;display:none}
 #bar i{display:block;height:100%;background:var(--acc);width:0}
 #goal{left:14px;top:14px;max-width:360px;background:#16191dd9;border-left:4px solid var(--acc);padding:10px 14px;border-radius:4px}
 #goal b{color:var(--acc);display:block;font-size:13px}
@@ -76,24 +76,26 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 </style>
 </head>
 <body>
-<div id="cross" class="hud"></div>
 <div id="info" class="hud"></div>
 <div id="bar" class="hud"><i></i></div>
 <div id="goal" class="hud"></div>
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
-<div id="bottom" class="hud"><div id="tool"></div><div id="hotbar"></div><div id="keys">WASD laufen · Leertaste springen · Shift rennen · LMB abbauen · RMB Block setzen · Q Baumenü · E Benutzen · I Inventar · R drehen · Esc Pause</div></div>
+<div id="bottom" class="hud"><div id="tool"></div><div id="hotbar"></div><div id="keys">RMB ziehen: umsehen · WASD laufen · Leertaste springen · Shift rennen · LMB abbauen · Rechtsklick Block setzen · Q Baumenü · E Benutzen · I Inventar · R drehen · Esc Pause</div></div>
 
 <div id="pause" class="ov"><div class="card">
   <h1>SATIS<span>CRAFT</span></h1>
-  <p class="mut" id="ptext">Eine abbaubare Blockwelt mit Fabrikbau. Klicke auf „Spielen“, um die Maus zu fangen.</p>
+  <p class="mut" id="ptext">Eine abbaubare Blockwelt mit Fabrikbau. Klicke auf „Spielen“, um loszulegen.</p>
   <div class="cols">
    <div><h3>Steuerung</h3>
     <table class="k">
-     <tr><td>WASD / Maus</td><td>Laufen und umsehen</td></tr>
+     <tr><td>WASD</td><td>Laufen</td></tr>
+     <tr><td>Rechte Maus halten + ziehen</td><td>Kamera drehen</td></tr>
+     <tr><td>Mauszeiger</td><td>Zielen</td></tr>
      <tr><td>Leertaste / Shift</td><td>Springen / rennen</td></tr>
      <tr><td>Linke Maus halten</td><td>Abbauen (Maschinen: abreißen, volle Rückerstattung)</td></tr>
-     <tr><td>Rechte Maus</td><td>Block setzen (1–4 wählen)</td></tr>
+     <tr><td>Rechtsklick</td><td>Block setzen (1–4 wählen), im Baumodus: abbrechen</td></tr>
+     <tr><td>Esc</td><td>Pause</td></tr>
      <tr><td>Q</td><td>Baumenü für Maschinen und Bänder</td></tr>
      <tr><td>R</td><td>Bauvorschau drehen</td></tr>
      <tr><td>E</td><td>Maschine öffnen</td></tr>
