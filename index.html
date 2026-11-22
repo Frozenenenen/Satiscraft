@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/ https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src https://0.peerjs.com wss://0.peerjs.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Satiscraft</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -63,6 +63,12 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 button.b{background:var(--acc);color:#1a1206;border:0;border-radius:4px;padding:8px 14px;font:700 14px "Chakra Petch",sans-serif;cursor:pointer;min-height:36px}
 button.b.sec{background:#353b44;color:var(--ink)}
 button.b.ok{background:var(--ok);color:#06210b}button.b.err{background:var(--bad);color:#fff}
+#coop{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}#coop h3{margin-top:0}
+.crow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.crow input{font:16px "Chakra Petch",sans-serif;background:#262b32;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-height:40px;width:170px}
+.crow input:focus-visible{outline:2px solid var(--acc)}#joincode{width:120px;text-transform:uppercase;letter-spacing:.12em}
+#coopstate{margin:10px 0 0;font-size:14px;min-height:1.4em}#coopstate.err{color:var(--bad)}
+#coophud{right:14px;top:14px;background:#16191dd9;border-right:4px solid var(--acc);padding:8px 14px;border-radius:4px;display:none;font-size:14px}
 #savestate{margin:10px 0 0;font-size:13px;color:var(--mut);min-height:1.4em}#savestate.err{color:var(--bad)}
 button.b:disabled{opacity:.4;cursor:default}
 button.b:focus-visible{outline:2px solid #fff}
@@ -83,6 +89,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="goal" class="hud"></div>
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
+<div id="coophud" class="hud"></div>
 <div id="bottom" class="hud"><div id="tool"></div><div id="hotbar"></div><div id="keys">RMB ziehen: umsehen · WASD laufen · Leertaste springen · Shift rennen · LMB abbauen · Rechtsklick Block setzen · Q Baumenü · E Benutzen · I Inventar · R drehen · Esc Pause</div></div>
 
 <div id="pause" class="ov"><div class="card">
@@ -111,11 +118,18 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
   </div>
   <div class="btns"><button class="b" id="play">Spielen</button><button class="b sec" id="saveb">Speichern</button><button class="b sec" id="newb">Neue Welt</button></div>
   <p id="savestate" role="status" aria-live="polite"></p>
+  <div id="coop"><h3>Koop – bis zu 4 Spieler</h3>
+   <div class="crow"><label for="pname" class="mut">Name</label><input id="pname" maxlength="16" placeholder="Spieler" autocomplete="nickname">
+    <button class="b" id="hostb">Spiel hosten</button>
+    <input id="joincode" maxlength="5" placeholder="Code" aria-label="Raumcode" autocomplete="off"><button class="b sec" id="joinb">Beitreten</button>
+    <button class="b sec" id="leaveb" hidden>Koop verlassen</button></div>
+   <p id="coopstate" role="status" aria-live="polite"></p>
+   <p class="mut" style="font-size:13px;margin:4px 0 0">Der Host teilt seine Welt; Inventar, Werkzeugstufe und Meilensteine sind gemeinsam. Verbindung direkt zwischen den Browsern (WebRTC) – Mitspieler sehen dabei gegenseitig ihre IP-Adresse. Der Host sollte den Tab im Vordergrund lassen.</p></div>
 </div></div>
 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=16"></script>
+<script src="game.js?v=17"></script>
 </body>
 </html>

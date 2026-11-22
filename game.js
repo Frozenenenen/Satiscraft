@@ -179,7 +179,7 @@ function markDirty(x,y,z){const cx=Math.floor(x/CS),cy=Math.floor(y/CS),cz=Math.
   const lx=x-cx*CS,ly=y-cy*CS,lz=z-cz*CS;
   if((ax===-1&&lx!==0)||(ax===1&&lx!==CS-1)||(ay===-1&&ly!==0)||(ay===1&&ly!==CS-1)||(az===-1&&lz!==0)||(az===1&&lz!==CS-1))continue;
   const X=cx+ax,Y=cy+ay,Z=cz+az;if(X<0||Y<0||Z<0||X>=NCX||Y>=NCY||Z>=NCZ)continue;dirty.add(X+Z*NCX+Y*NCX*NCZ)}}
-function setBlock(x,y,z,id,rec){const i=idx(x,y,z);world[i]=id;if(rec)changes.set(i,id);markDirty(x,y,z)}
+function setBlock(x,y,z,id,rec){const i=idx(x,y,z);world[i]=id;if(rec)changes.set(i,id);markDirty(x,y,z);if(rec&&net.role==='host')netEmit({t:'blk',i,id})}
 
 // ---------- Laubzerfall ----------
 // Laub ist gehalten, wenn es über höchstens LEAF_REACH zusammenhängende Laubblöcke einen Stamm berührt.
@@ -198,7 +198,7 @@ function checkLeavesAround(x,y,z){const r=LEAF_REACH+1;
  for(let lx=Math.max(0,x-r);lx<=Math.min(W-1,x+r);lx++)for(let ly=Math.max(0,y-r);ly<=Math.min(H-1,y+r);ly++)for(let lz=Math.max(0,z-r);lz<=Math.min(D-1,z+r);lz++)
   if(world[idx(lx,ly,lz)]===LEAF&&!decay.has(idx(lx,ly,lz))&&!leafSupported(lx,ly,lz))scheduleDecay(lx,ly,lz)}
 function checkAllLeaves(){for(let i=0;i<world.length;i++)if(world[i]===LEAF){const x=i%W,z=Math.floor(i/W)%D,y=Math.floor(i/(W*D));if(!leafSupported(x,y,z))scheduleDecay(x,y,z)}}
-function updateDecay(){let n=0;for(const[k,t]of decay){if(t>gameTime)continue;decay.delete(k);if(world[k]!==LEAF)continue;
+function updateDecay(){if(net.role==='client')return;let n=0;for(const[k,t]of decay){if(t>gameTime)continue;decay.delete(k);if(world[k]!==LEAF)continue;
  const x=k%W,z=Math.floor(k/W)%D,y=Math.floor(k/(W*D));if(leafSupported(x,y,z))continue;setBlock(x,y,z,0,true);if(++n>=8)break}}
 
 // ---------- Modelle ----------
@@ -261,18 +261,18 @@ const dims=(def,rot)=>rot%2?[def.d,def.w]:[def.w,def.d];
 function shapeOf(def,lx,lz){if(def.bridge)return(lz===0||lz===def.d-1)?[0,1]:[1];const r=[];for(let y=0;y<def.h;y++)r.push(y);return r}
 function cellsOf(def,ox,oy,oz,rot){const c=[];for(let lx=0;lx<def.w;lx++)for(let lz=0;lz<def.d;lz++){const[a,b]=toW(def,rot,lx,lz);
  for(const dy of shapeOf(def,lx,lz))c.push({x:ox+a,y:oy+dy,z:oz+b,base:dy===0})}return c}
-function checkPlace(type,ox,oy,oz,rot){
+function checkPlace(type,ox,oy,oz,rot,ignoreP){
  const def=BUILD[type];const cells=cellsOf(def,ox,oy,oz,rot);
  for(const c of cells){if(c.x<0||c.z<0||c.x>=W||c.z>=D||c.y<1||c.y>=H)return'Außerhalb der Welt';
   if(get(c.x,c.y,c.z)&&!(def.router&&get(c.x,c.y,c.z)===BELT))return'Platz blockiert – Blöcke wegräumen';
   if(c.base&&!opaque(get(c.x,c.y-1,c.z)))return'Fläche nicht eben – Boden fehlt'}
  const px0=Math.floor(P.x-.3),px1=Math.floor(P.x+.3),pz0=Math.floor(P.z-.3),pz1=Math.floor(P.z+.3),py0=Math.floor(P.y),py1=Math.floor(P.y+1.79);
- if(cells.some(c=>c.x>=px0&&c.x<=px1&&c.z>=pz0&&c.z<=pz1&&c.y>=py0&&c.y<=py1))return'Du stehst im Weg';
+ if(!ignoreP&&cells.some(c=>c.x>=px0&&c.x<=px1&&c.z>=pz0&&c.z<=pz1&&c.y>=py0&&c.y<=py1))return'Du stehst im Weg';
  if(!has(def.cost))return'Zu wenig Ressourcen';return''}
 function createMachine(type,ox,oy,oz,rot,data){
  const def=BUILD[type],[rw,rd]=dims(def,rot);
  if(type==='belt'){const b={x:ox,y:oy,z:oz,dir:rot,items:[],s:0};const g=new THREE.Group(),k=model('belt').g;g.add(k);b.k=k;g.position.set(ox+.5,oy,oz+.5);g.rotation.y=-rot*Math.PI/2;scene.add(g);b.g=g;
-  belts.set(idx(ox,oy,oz),b);world[idx(ox,oy,oz)]=BELT;if(data)b.items=data.map((it,i)=>({item:it,p:Math.max(0,.9-i*SP)}));slopesDirty=true;return b}
+  belts.set(idx(ox,oy,oz),b);world[idx(ox,oy,oz)]=BELT;if(data)b.items=data.map((it,i)=>({item:it,p:Math.max(0,.9-i*SP)}));slopesDirty=true;if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return b}
  const m={type,x:ox,y:oy,z:oz,rot,rw,rd,h:def.h,inBuf:{},outBuf:{},recipe:0,t:0,status:'',working:false,tr:[]};
  if(data){m.inBuf=data.i||{};m.outBuf=data.o||{};m.recipe=data.rc||0}
  m.cells=cellsOf(def,ox,oy,oz,rot).map(c=>idx(c.x,c.y,c.z));
@@ -281,8 +281,9 @@ function createMachine(type,ox,oy,oz,rot,data){
  m.ins=mp(def.ins);m.outs=mp(def.outs);
  if(def.router&&data){for(const k in m.outBuf)for(let i=0;i<m.outBuf[k]&&m.tr.length<4;i++)m.tr.push({item:k});m.outBuf={}}
  if(def.miner&&m.recipe!==1){m.recipe=0;let ore=false;minerArea(m,()=>{ore=true;return true});if(!ore)m.recipe=1}
- const{g,a}=model(type);g.position.set(ox+rw/2,oy,oz+rd/2);g.rotation.y=-rot*Math.PI/2;scene.add(g);g.updateMatrixWorld(true);m.g=g;m.a=a;m.pulse=0;m.emitT=Math.random()*.3;machines.push(m);return m}
+ const{g,a}=model(type);g.position.set(ox+rw/2,oy,oz+rd/2);g.rotation.y=-rot*Math.PI/2;scene.add(g);g.updateMatrixWorld(true);m.g=g;m.a=a;m.pulse=0;m.emitT=Math.random()*.3;machines.push(m);if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return m}
 function removeBuilding(t){
+ if(net.role==='host')netEmit({t:'rm',i:keyOf(t)});
  if(t.dir!==undefined&&t.items){scene.remove(t.g);belts.delete(idx(t.x,t.y,t.z));slopesDirty=true;world[idx(t.x,t.y,t.z)]=0;for(const i of t.items)add(i.item,1);
   for(const k in BUILD.belt.cost)add(k,BUILD.belt.cost[k]);return}
  const m=t;for(const i of m.cells){world[i]=0;machineAt.delete(i);markDirty(i%W,Math.floor(i/(W*D)),Math.floor(i/W)%D)}for(const it of m.tr)add(it.item,1);
@@ -323,6 +324,7 @@ function minerArea(m,fn){const def=BUILD[m.type];for(let y=m.y-1;y>=Math.max(1,m
 const bridgePath=(def,f)=>[.27+1.25*Math.min(1,Math.sin(Math.PI*f)*1.6),-def.d/2+f*def.d];
 function tickMachine(m,dt){
  const def=BUILD[m.type];
+ if(def.miner&&net.role==='client')return; // Abbau läuft nur beim Host, Zustand kommt per Sync
  if(def.router){m.working=m.tr.length>0;m.status=m.tr.length?'Verteilt…':'Wartet auf Items';
   if(m.tr.length&&m.type==='merger'){const p=m.outs[0],b=belts.get(idx(p.x,p.y,p.z));
    if(b&&b.dir!==(p.dir+2)%4&&beltFree(b)){m.ri=m.ri||0;let j=-1,pi=0;for(let k=0;k<3&&j<0;k++){pi=(m.ri+k)%3;j=m.tr.findIndex(t=>t.pi===pi)}
@@ -385,7 +387,7 @@ function resume(){$('pause').classList.remove('on');locked=true}
 function pause(){locked=false;releaseMouse();showPause(true)}
 $('play').onclick=()=>resume();
 $('saveb').onclick=()=>save();
-$('newb').onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}newWorld(Math.floor(Math.random()*1e6));toast('Neue Welt erstellt')};
+$('newb').onclick=()=>{if(net.role!=='solo')return toast('Während Koop nicht möglich – erst Koop verlassen');try{localStorage.removeItem(KEY)}catch(e){}newWorld(Math.floor(Math.random()*1e6));toast('Neue Welt erstellt')};
 function openPanel(kind,m){panel={kind,m};panelHtml='';$('panel').classList.add('on');renderPanel();locked=false;releaseMouse()}
 function closePanel(){panel=null;$('panel').classList.remove('on');resume()}
 $('panel').addEventListener('mousedown',e=>{if(e.target.id==='panel')closePanel()});
@@ -422,17 +424,22 @@ addEventListener('pointercancel',()=>{panelHold=false});
 $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const[act,arg]=b.dataset.act.split(':');const m=panel&&panel.m;
  if(act==='close')return closePanel();
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
- if(act==='craft'){const t=+arg;if(has(TOOLREC[t])&&tier===t-1){for(const k in TOOLREC[t])add(k,-TOOLREC[t][k]);tier=t;if(m)m.pulse=1.4;toast(TOOLS[t].n+' hergestellt')}}
- if(act==='recipe'){const i=+arg;if(i!==m.recipe){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};m.recipe=i;m.t=0}}
- if(act==='put'){const n=Math.min(inv[arg]||0,MAXIN-(m.inBuf[arg]||0));if(n>0){add(arg,-n);m.inBuf[arg]=(m.inBuf[arg]||0)+n}}
- if(act==='take'){add(arg,m.outBuf[arg]);delete m.outBuf[arg]}
- if(act==='takec'){add(arg,m.inBuf[arg]);delete m.inBuf[arg]}
- if(act==='takeall'){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={}}
+ if(m&&PANEL_ACTS.includes(act)){if(net.role==='client')netSend({t:'act',a:'panel',k:m.cells[0],act,arg});else panelAct(m,act,arg)}
  renderPanel();renderHotbar()});
+const PANEL_ACTS=['craft','recipe','put','take','takec','takeall'];
+function panelAct(m,act,arg){
+ if(act==='craft'){const t=+arg;if(m.type==='workbench'&&TOOLREC[t]&&has(TOOLREC[t])&&tier===t-1){for(const k in TOOLREC[t])add(k,-TOOLREC[t][k]);tier=t;m.pulse=1.4;toast(TOOLS[t].n+' hergestellt')}}
+ if(act==='recipe'){const i=+arg,n=BUILD[m.type].miner?2:RECIPES[m.type]?RECIPES[m.type].length:0;if(isInt(i,0,n-1)&&i!==m.recipe){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};m.recipe=i;m.t=0}}
+ if(act==='takeall'&&BUILD[m.type].store){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};return}
+ if(!own(ITEMS,arg))return;
+ if(act==='put'){const r=RECIPES[m.type]&&RECIPES[m.type][m.recipe];if(!r||r.in[arg]===undefined)return;const n=Math.min(inv[arg]||0,MAXIN-(m.inBuf[arg]||0));if(n>0){add(arg,-n);m.inBuf[arg]=(m.inBuf[arg]||0)+n}}
+ if(act==='take'&&m.outBuf[arg]){add(arg,m.outBuf[arg]);delete m.outBuf[arg]}
+ if(act==='takec'&&m.inBuf[arg]){add(arg,m.inBuf[arg]);delete m.inBuf[arg]}
+ if(act==='takeall'){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={}}}
 function renderHotbar(){
  $('hotbar').innerHTML=PLACE.map(([it],i)=>`<div class="slot ${i===selSlot?'sel':''}"><span class="k">${i+1}</span><span class="sw" style="background:${ITEMS[it][1]}"></span><span class="n">${inv[it]||0}</span><span class="l">${ITEMS[it][0]}</span></div>`).join('');
  $('tool').innerHTML=`Werkzeug: <b>${TOOLS[tier].n}</b>`}
-function renderGoal(){while(goal<GOALS.length-1&&GOALS[goal][1]()){goal++;if(goal>0)toast('Meilenstein erreicht!')}
+function renderGoal(){while(net.role!=='client'&&goal<GOALS.length-1&&GOALS[goal][1]()){goal++;if(goal>0)toast('Meilenstein erreicht!')}
  $('goal').innerHTML=`<b>Meilenstein ${Math.min(goal+1,GOALS.length-1)} / ${GOALS.length-1}</b>${GOALS[goal][0]}`}
 
 // ---------- Eingabe ----------
@@ -452,15 +459,16 @@ document.addEventListener('mousemove',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse
  if(!locked||!mouseR)return;dragDist+=Math.abs(e.movementX)+Math.abs(e.movementY);
  if(dragDist>4)canvas.classList.add('drag');P.yaw-=e.movementX*.004;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.004))});
 canvas.addEventListener('mousedown',e=>{if(!locked)return;
- if(e.button===0){mouseL=true;if(buildType){const b=tryPlace();if(buildType==='belt'){lastBeltObj=b||null;lastBelt=place?place.ox+','+place.oy+','+place.oz:''}}}
+ if(e.button===0){mouseL=true;if(buildType){const ok=place&&!place.err;const pos=place&&{x:place.ox,y:place.oy,z:place.oz};tryPlace();if(buildType==='belt'){lastBeltPos=ok?pos:null;lastBelt=place?place.ox+','+place.oy+','+place.oz:''}}}
  if(e.button===2){mouseR=true;dragDist=0}});
-document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt='';lastBeltObj=null}
+document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt='';lastBeltPos=null}
  if(e.button===2&&mouseR){mouseR=false;canvas.classList.remove('drag');if(locked&&dragDist<=4){if(buildType)buildType=null;else placeBlock()}}});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('wheel',e=>{if(!locked)return;if(buildType){rotOff=(rotOff+(e.deltaY>0?1:3))%4}else{selSlot=(selSlot+(e.deltaY>0?1:PLACE.length-1))%PLACE.length;renderHotbar()}},{passive:true});
 function placeBlock(){const h=raycast(6);if(!h)return;const[it,id]=PLACE[selSlot];if(!inv[it])return toast('Kein '+ITEMS[it][0]+' im Inventar');
  const x=h.x+h.n[0],y=h.y+h.n[1],z=h.z+h.n[2];if(x<0||z<0||x>=W||z>=D||y<1||y>=H||get(x,y,z))return;
  if(Math.floor(P.x-.3)<=x&&x<=Math.floor(P.x+.3)&&Math.floor(P.z-.3)<=z&&z<=Math.floor(P.z+.3)&&Math.floor(P.y)<=y&&y<=Math.floor(P.y+1.79))return;
+ if(net.role==='client'){netSend({t:'act',a:'place',slot:selSlot,x,y,z});return}
  add(it,-1);setBlock(x,y,z,id,true);renderHotbar()}
 let place=null;
 function computePlace(){place=null;if(!buildType)return;const h=raycast(8);if(!h)return;const def=BUILD[buildType];
@@ -469,22 +477,29 @@ function computePlace(){place=null;if(!buildType)return;const h=raycast(8);if(!h
  const ox=ax-Math.floor(rw/2),oz=az-Math.floor(rd/2);let r2=rot;
  if(def.router){const ob=belts.get(idx(ox,ay,oz));if(ob)r2=(ob.dir+rotOff)%4}
  place={ox,oy:ay,oz,rot:r2,rw,rd,err:checkPlace(buildType,ox,ay,oz,r2)}}
-function tryPlace(rotOverride){if(!place)return null;if(place.err){toast(place.err);return null}const def=BUILD[buildType];
- if(def.router){const ob=belts.get(idx(place.ox,place.oy,place.oz));if(ob)removeBuilding(ob)}
- for(const k in def.cost)add(k,-def.cost[k]);const r=createMachine(buildType,place.ox,place.oy,place.oz,rotOverride??place.rot);renderHotbar();
+function tryPlace(rotOverride){if(!place)return null;if(place.err){toast(place.err);return null}const def=BUILD[buildType],rot=rotOverride??place.rot;
+ if(net.role==='client'){netSend({t:'act',a:'build',type:buildType,x:place.ox,y:place.oy,z:place.oz,r:rot});return null}
+ const r=doBuild(buildType,place.ox,place.oy,place.oz,rot);renderHotbar();
  if(!has(def.cost)&&buildType!=='belt')buildType=null;return r}
+function doBuild(type,ox,oy,oz,rot){const def=BUILD[type];
+ if(def.router){const ob=belts.get(idx(ox,oy,oz));if(ob)removeBuilding(ob)}
+ for(const k in def.cost)add(k,-def.cost[k]);return createMachine(type,ox,oy,oz,rot)}
+function doMine(x,y,z,id){const bd=BL[id];setBlock(x,y,z,0,true);if(id===LOG||id===LEAF)checkLeavesAround(x,y,z);reserves.delete(idx(x,y,z));if(bd.drop)add(bd.drop,bd.ore?2:1)}
 // Shift + Ziehen: Bänder folgen der Zugrichtung; das vorige Band wird zum neuen hin ausgerichtet (Kurven).
-let lastBeltObj=null;
-function setBeltDir(b,d){b.dir=d;b.g.rotation.y=-d*Math.PI/2;slopesDirty=true}
+let lastBeltPos=null;
+function setBeltDir(b,d){b.dir=d;b.g.rotation.y=-d*Math.PI/2;slopesDirty=true;if(net.role==='host')netEmit({t:'bdir',i:idx(b.x,b.y,b.z),d})}
+const keyOf=t=>t.items&&t.dir!==undefined?idx(t.x,t.y,t.z):t.cells[0];
 function dragBelt(){const k=place.ox+','+place.oy+','+place.oz;if(k===lastBelt||place.err)return;
- let dir=null;const lb=lastBeltObj&&belts.get(idx(lastBeltObj.x,lastBeltObj.y,lastBeltObj.z))===lastBeltObj?lastBeltObj:null;
- if(lb){const dx=place.ox-lb.x,dz=place.oz-lb.z,dy=place.oy-lb.y;if(Math.abs(dx)+Math.abs(dz)===1&&Math.abs(dy)<=1){dir=DIRS.findIndex(([a,b])=>a===dx&&b===dz);setBeltDir(lb,dir)}}
- lastBelt=k;const b=tryPlace(dir??undefined);if(b)lastBeltObj=b}
+ let dir=null;const lp=lastBeltPos;
+ if(lp){const dx=place.ox-lp.x,dz=place.oz-lp.z,dy=place.oy-lp.y;if(Math.abs(dx)+Math.abs(dz)===1&&Math.abs(dy)<=1){dir=DIRS.findIndex(([a,b])=>a===dx&&b===dz);
+  const i=idx(lp.x,lp.y,lp.z);if(net.role==='client')netSend({t:'act',a:'bdir',i,d:dir});else{const lb=belts.get(i);if(lb)setBeltDir(lb,dir)}}}
+ lastBelt=k;const pos={x:place.ox,y:place.oy,z:place.oz};tryPlace(dir??undefined);lastBeltPos=pos}
 
 // ---------- Speichern / Laden ----------
-function save(){try{const data={seed,changes:[...changes],res:[...reserves],inv,tier,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
+function snapshot(){return{seed,changes:[...changes],res:[...reserves],inv,tier,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
  machines:machines.map(m=>{const o={...m.outBuf};for(const it of m.tr)o[it.item]=(o[it.item]||0)+1;return{t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o,rc:m.recipe}}),
- belts:[...belts.values()].map(b=>[b.x,b.y,b.z,b.dir,b.items.map(i=>i.item)])};
+ belts:[...belts.values()].map(b=>[b.x,b.y,b.z,b.dir,b.items.map(i=>i.item)])}}
+function save(){if(net.role==='client'){toast('Im Koop speichert der Host');return false}try{const data=snapshot();
  localStorage.setItem(KEY,JSON.stringify(data));lastSave=new Date();toast('Spiel gespeichert');saveFeedback(true);return true}catch(e){toast('Speichern in diesem Browser nicht möglich');saveFeedback(false);return false}}
 let lastSave=null,saveFbT=0;
 function saveFeedback(ok){const b=$('saveb'),st=$('savestate');b.textContent=ok?'Gespeichert':'Fehlgeschlagen';b.classList.toggle('ok',ok);b.classList.toggle('err',!ok);
@@ -589,9 +604,9 @@ function frame(now){
   hl.visible=true;info=`${nm}<small>${sub}</small>`;
   const key=h.x+','+h.y+','+h.z;
   if(mouseL){if(key!==mineKey){mineKey=key;mineT=0}
-   if(tgt){mineT+=dt/.6;if(mineT>=1){removeBuilding(tgt);mineT=0;mineKey='';renderHotbar();toast(nm+' abgerissen – Material erstattet')}}
+   if(tgt){mineT+=dt/.6;if(mineT>=1){if(net.role==='client')netSend({t:'act',a:'rm',i:keyOf(tgt)});else removeBuilding(tgt);mineT=0;mineKey='';renderHotbar();toast(nm+' abgerissen – Material erstattet')}}
    else{const bd=BL[h.id];if(bd.tier<=tier){mineT+=dt*TOOLS[tier].s/bd.time;if(mineT>=1){mineT=0;mineKey='';
-    setBlock(h.x,h.y,h.z,0,true);if(h.id===LOG||h.id===LEAF)checkLeavesAround(h.x,h.y,h.z);const k=idx(h.x,h.y,h.z);reserves.delete(k);if(bd.drop)add(bd.drop,bd.ore?2:1);renderHotbar()}}}}
+    if(net.role==='client')netSend({t:'act',a:'mine',x:h.x,y:h.y,z:h.z});else doMine(h.x,h.y,h.z,h.id);renderHotbar()}}}}
   else{mineT=0;mineKey=''}}
  else{hl.visible=false;mineT=0}
  $('bar').style.display=mineT>0?'block':'none';$('bar').firstChild.style.width=(mineT*100)+'%';
@@ -608,8 +623,131 @@ function frame(now){
  $('info').innerHTML=info;
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').style.opacity=0}
  slow+=dt;if(slow>.3){slow=0;if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
- saveT+=dt;if(saveT>60){saveT=0;if(locked)save()}
+ saveT+=dt;if(saveT>60){saveT=0;if(locked&&net.role!=='client')save()}
+ netTick(dt);
  renderer.render(scene,camera)}
+
+// ---------- Koop (PeerJS/WebRTC; der Host ist maßgeblich, Mitspieler senden nur Aktionen) ----------
+const NET_PREFIX='satiscraft-v1-',PCOL=['#f29a2e','#3d9bd6','#5fcf6f','#d65fb4'],NMAX=W*H*D;
+const net={role:'solo',id:0,peer:null,conns:new Map(),host:null,code:'',others:new Map(),queue:[],syncT:0,posT:0};
+let peerLib=null;
+function loadPeer(){if(window.Peer)return Promise.resolve();if(peerLib)return peerLib;
+ peerLib=new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js';
+  sc.integrity='sha384-nlUQ8ZqCbvStErob+biJNzSgltf6urV3VGqhfIfzhmg9RXmpeRm76ELw0pYnKlTR';sc.crossOrigin='anonymous';sc.referrerPolicy='no-referrer';
+  sc.onload=()=>res();sc.onerror=()=>{peerLib=null;rej(new Error('Netzwerkbibliothek konnte nicht geladen werden.'))};document.head.appendChild(sc)});return peerLib}
+const PeerC=()=>window.Peer||(window.peerjs&&window.peerjs.Peer);
+function myName(){const v=($('pname').value||'').trim().slice(0,16);return v||'Spieler'}
+function coopState(t,bad){const e=$('coopstate');e.textContent=t;e.classList.toggle('err',!!bad)}
+function netEmit(msg){net.queue.push(msg)}
+function netSend(msg){if(net.host&&net.host.open)net.host.send(msg)}
+function playerList(){const l=[{id:0,name:myName(),x:P.x,y:P.y,z:P.z,yaw:P.yaw}];for(const[id,o]of net.others)if(o.x!==undefined)l.push({id,name:o.name||'Spieler',x:o.x,y:o.y,z:o.z,yaw:o.yaw});return l}
+function updateCoopUI(){const inCoop=net.role!=='solo';$('hostb').hidden=inCoop;$('joinb').hidden=inCoop;$('joincode').hidden=inCoop;$('leaveb').hidden=!inCoop;
+ const n=net.role==='host'?net.conns.size+1:net.role==='client'?avatars.size+1:1;
+ $('coophud').style.display=inCoop?'block':'none';
+ $('coophud').textContent=net.role==='host'?`Koop-Host · Raum ${net.code} · ${n}/4 Spieler`:net.role==='client'?`Koop · Spieler ${net.id+1} · ${n} Spieler`:'';
+ $('newb').disabled=inCoop;$('saveb').disabled=net.role==='client'}
+// --- Host ---
+async function hostGame(){if(net.role!=='solo'||net.peer)return;
+ if(typeof RTCPeerConnection==='undefined')return coopState('WebRTC ist hier nicht verfügbar. Öffne das Spiel auf frozenenenen.github.io/Satiscraft.',true);
+ coopState('Verbinde mit dem Vermittlungsserver…');try{await loadPeer()}catch(e){return coopState(e.message,true)}
+ const code=Array.from({length:5},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+ let peer;try{peer=new(PeerC())(NET_PREFIX+code,{debug:0})}catch(e){return coopState('Koop nicht möglich: '+e.message,true)}net.peer=peer;
+ peer.on('open',()=>{net.role='host';net.id=0;net.code=code;coopState('Raum offen. Code für deine Mitspieler: '+code);updateCoopUI()});
+ peer.on('connection',c=>hostAccept(c));
+ peer.on('disconnected',()=>{if(net.role==='host')try{peer.reconnect()}catch(e){}});
+ peer.on('error',err=>{if(net.role!=='host'){coopState('Raum konnte nicht geöffnet werden ('+(err.type||err.message)+').',true);try{peer.destroy()}catch(e){}net.peer=null}})}
+function hostAccept(conn){
+ conn.on('open',()=>{if(net.conns.size>=3){conn.send({t:'full'});setTimeout(()=>conn.close(),500);return}
+  let id=1;while(net.conns.has(id))id++;conn.pid=id;net.conns.set(id,conn);net.others.set(id,{name:'Spieler'});
+  conn.send({t:'welcome',id,save:snapshot()});toast('Spieler '+(id+1)+' ist beigetreten');updateCoopUI()});
+ conn.on('data',d=>{try{hostRecv(conn,d)}catch(e){}});
+ conn.on('close',()=>{if(conn.pid&&net.conns.get(conn.pid)===conn){net.conns.delete(conn.pid);net.others.delete(conn.pid);removeAvatar(conn.pid);toast((conn.pname||'Ein Spieler')+' hat das Spiel verlassen');updateCoopUI()}})}
+function hostRecv(conn,d){if(!conn.pid||!d||typeof d!=='object')return;
+ if(d.t==='pos'){const o=net.others.get(conn.pid);if(!o)return;if([d.x,d.y,d.z,d.yaw].every(v=>isNum(v,-1e4,1e4))){o.x=d.x;o.y=d.y;o.z=d.z;o.yaw=d.yaw}
+  if(typeof d.name==='string'){o.name=d.name.slice(0,16);conn.pname=o.name}return}
+ if(d.t==='act'){applyAction(d);net.syncT=1}}
+// Aktionen von Mitspielern: alles prüfen, nichts ungeprüft übernehmen.
+function applyAction(d){const ok3=()=>isInt(d.x,0,W-1)&&isInt(d.y,1,H-1)&&isInt(d.z,0,D-1);
+ if(d.a==='mine'){if(!ok3())return;const id=world[idx(d.x,d.y,d.z)];if(!id||id>=200||!BL[id]||BL[id].tier>tier)return;doMine(d.x,d.y,d.z,id)}
+ else if(d.a==='place'){if(!ok3()||!isInt(d.slot,0,PLACE.length-1))return;const[it,id]=PLACE[d.slot];if(!inv[it]||world[idx(d.x,d.y,d.z)])return;add(it,-1);setBlock(d.x,d.y,d.z,id,true)}
+ else if(d.a==='build'){if(typeof d.type!=='string'||!own(BUILD,d.type)||!ok3()||!isInt(d.r,0,3))return;if(checkPlace(d.type,d.x,d.y,d.z,d.r,true))return;doBuild(d.type,d.x,d.y,d.z,d.r)}
+ else if(d.a==='rm'){if(!isInt(d.i,0,NMAX-1))return;const t=belts.get(d.i)||machineAt.get(d.i);if(t)removeBuilding(t)}
+ else if(d.a==='bdir'){if(!isInt(d.i,0,NMAX-1)||!isInt(d.d,0,3))return;const b=belts.get(d.i);if(b)setBeltDir(b,d.d)}
+ else if(d.a==='panel'){if(!isInt(d.k,0,NMAX-1)||!PANEL_ACTS.includes(d.act))return;const m=machineAt.get(d.k);if(m&&(typeof d.arg==='string'||d.arg===undefined))panelAct(m,d.act,d.arg)}
+ renderHotbar()}
+function syncMsg(){return{t:'sync',inv,tier,goal,
+ m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1])]),
+ b:[...belts.entries()].map(([k,b])=>[k,b.items.map(i=>[i.item,+i.p.toFixed(2)])])}}
+// --- Mitspieler ---
+async function joinGame(){if(net.role!=='solo'||net.peer)return;const code=($('joincode').value||'').trim().toUpperCase();
+ if(!/^[A-Z0-9]{5}$/.test(code))return coopState('Bitte den 5-stelligen Raumcode eingeben.',true);
+ if(typeof RTCPeerConnection==='undefined')return coopState('WebRTC ist hier nicht verfügbar. Öffne das Spiel auf frozenenenen.github.io/Satiscraft.',true);
+ coopState('Verbinde…');try{await loadPeer()}catch(e){return coopState(e.message,true)}
+ let peer;try{peer=new(PeerC())({debug:0})}catch(e){return coopState('Koop nicht möglich: '+e.message,true)}net.peer=peer;
+ const fail=t=>{coopState(t,true);try{peer.destroy()}catch(e){}net.peer=null;net.host=null};
+ const to=setTimeout(()=>{if(net.role!=='client')fail('Keine Antwort vom Host. Ist der Raum noch offen?')},15000);
+ peer.on('open',()=>{const conn=peer.connect(NET_PREFIX+code,{reliable:true});net.host=conn;
+  conn.on('open',()=>coopState('Verbunden, lade Welt…'));
+  conn.on('data',d=>{try{clientRecv(d)}catch(e){}});
+  conn.on('close',()=>{clearTimeout(to);if(net.role==='client'){leaveCoop('Die Verbindung zum Host wurde getrennt.')}})});
+ peer.on('error',err=>{clearTimeout(to);if(net.role==='client')return leaveCoop('Verbindungsfehler: '+(err.type||err.message));
+  fail(err.type==='peer-unavailable'?'Raum nicht gefunden – Code prüfen.':'Verbindung fehlgeschlagen ('+(err.type||err.message)+').')})}
+function clientRecv(d){if(!d||typeof d!=='object')return;
+ if(d.t==='full'){coopState('Der Raum ist voll (max. 4 Spieler).',true);try{net.peer.destroy()}catch(e){}net.peer=null;net.host=null;return}
+ if(d.t==='welcome'){const sv=sanitize(d.save);if(!sv||!isInt(d.id,1,3))return;net.role='client';net.id=d.id;newWorld(sv.seed,sv);
+  if(sv.P){P.x=Math.min(W-1,Math.max(1,(sv.P.x||64)+1.5));P.z=sv.P.z||64;P.y=(sv.P.y||40)+.5}
+  coopState('Verbunden als Spieler '+(net.id+1)+'. Inventar und Fortschritt teilt ihr euch.');updateCoopUI();toast('Koop beigetreten');return}
+ if(net.role!=='client')return;
+ if(d.t==='ev'){for(const e of arr(d.l))applyEvent(e);return}
+ if(d.t==='sync'){applySync(d);return}
+ if(d.t==='players'){const seen=new Set();for(const p of arr(d.l)){if(!p||!isInt(p.id,0,3)||p.id===net.id||![p.x,p.y,p.z,p.yaw].every(v=>isNum(v,-1e4,1e4)))continue;
+  seen.add(p.id);setAvatar(p.id,p.x,p.y,p.z,p.yaw,typeof p.name==='string'?p.name.slice(0,16):'Spieler')}
+  for(const id of[...avatars.keys()])if(!seen.has(id))removeAvatar(id);updateCoopUI()}}
+function applyEvent(e){if(!e||typeof e!=='object')return;
+ if(e.t==='blk'&&isInt(e.i,0,NMAX-1)&&isInt(e.id,0,12)){const i=e.i;if(world[i]===MACH||world[i]===BELT)return;setBlock(i%W,Math.floor(i/(W*D)),Math.floor(i/W)%D,e.id,true);reserves.delete(i)}
+ else if(e.t==='build'&&typeof e.type==='string'&&own(BUILD,e.type)&&isInt(e.x,0,W-1)&&isInt(e.y,1,H-1)&&isInt(e.z,0,D-1)&&isInt(e.r,0,3)){if(fits(e.type,e.x,e.y,e.z,e.r))createMachine(e.type,e.x,e.y,e.z,e.r)}
+ else if(e.t==='rm'&&isInt(e.i,0,NMAX-1)){const t=belts.get(e.i)||machineAt.get(e.i);if(t)removeBuilding(t)}
+ else if(e.t==='bdir'&&isInt(e.i,0,NMAX-1)&&isInt(e.d,0,3)){const b=belts.get(e.i);if(b)setBeltDir(b,e.d)}}
+function applySync(d){inv=cleanBag(d.inv,1e9);if(isInt(d.tier,0,4))tier=d.tier;if(isInt(d.goal,0,GOALS.length-1))goal=d.goal;
+ for(const r of arr(d.m)){if(!Array.isArray(r)||!isInt(r[0],0,NMAX-1))continue;const m=machineAt.get(r[0]);if(!m)continue;const def=BUILD[m.type];
+  m.inBuf=cleanBag(r[1],def.store||1e5);m.outBuf=cleanBag(r[2],1e5);if(isInt(r[3],0,9))m.recipe=r[3];if(isNum(r[4],0,1e4))m.t=r[4];m.working=!!r[5];
+  m.tr=arr(r[6]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])).slice(0,def.bridge?def.d*3:4).map(x=>({item:x[0],t:isNum(x[1],0,1e4)?x[1]:0,pi:isInt(x[2],0,2)?x[2]:undefined}))}
+ for(const r of arr(d.b)){if(!Array.isArray(r)||!isInt(r[0],0,NMAX-1))continue;const b=belts.get(r[0]);if(!b)continue;
+  b.items=arr(r[1]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])&&isNum(x[1],0,1)).slice(0,4).map(x=>({item:x[0],p:x[1]}))}
+ renderHotbar()}
+function leaveCoop(msg){const wasClient=net.role==='client';
+ for(const c of net.conns.values())try{c.close()}catch(e){}net.conns.clear();try{net.peer&&net.peer.destroy()}catch(e){}
+ net.peer=null;net.host=null;net.role='solo';net.others.clear();for(const id of[...avatars.keys()])removeAvatar(id);updateCoopUI();
+ if(wasClient){// eigene Welt wiederherstellen
+  let sv=null;try{const raw=localStorage.getItem(KEY);if(raw&&raw.length<2e7)sv=sanitize(JSON.parse(raw))}catch(e){}
+  try{if(sv)newWorld(sv.seed,sv);else newWorld(Math.floor(Math.random()*1e6))}catch(e){newWorld(Math.floor(Math.random()*1e6))}pause()}
+ coopState(msg||'Koop beendet.',!!msg&&wasClient)}
+// --- Spielerfiguren ---
+const avatars=new Map();
+function nameSprite(name,col){const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.font='bold 30px "Chakra Petch",sans-serif';x.textAlign='center';
+ x.fillStyle='rgba(22,25,29,.75)';const w=Math.min(250,x.measureText(name).width+24);x.fillRect(128-w/2,8,w,46);x.fillStyle=col;x.fillText(name,128,42);
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthWrite:false,transparent:true}));sp.scale.set(1.6,.4,1);return sp}
+function setAvatar(id,x,y,z,yaw,name){let a=avatars.get(id);
+ if(!a||a.name!==name){if(a)scene.remove(a.g);const g=new THREE.Group(),col=PCOL[id];const body=new THREE.MeshLambertMaterial({color:col});
+  bx(g,M(0x33373c),.22,.75,.26,-.13,0,0);bx(g,M(0x33373c),.22,.75,.26,.13,0,0);bx(g,body,.55,.75,.32,0,.75,0);
+  bx(g,body,.16,.7,.18,-.36,.8,0);bx(g,body,.16,.7,.18,.36,.8,0);bx(g,M(0xe0b48c),.44,.44,.44,0,1.5,0);bx(g,M(0x23272c),.3,.08,.05,0,1.62,-.23);
+  const lab=nameSprite(name,col);lab.position.y=2.25;g.add(lab);scene.add(g);a={g,name,x,y,z,yaw,tx:x,ty:y,tz:z,tyaw:yaw};avatars.set(id,a);if(!a.init){a.init=1}}
+ a.tx=x;a.ty=y;a.tz=z;a.tyaw=yaw}
+function removeAvatar(id){const a=avatars.get(id);if(a){scene.remove(a.g);avatars.delete(id)}}
+function updateAvatars(dt){const k=Math.min(1,dt*10);for(const a of avatars.values()){a.x+=(a.tx-a.x)*k;a.y+=(a.ty-a.y)*k;a.z+=(a.tz-a.z)*k;
+ let dy=a.tyaw-a.yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));a.yaw+=dy*k;a.g.position.set(a.x,a.y,a.z);a.g.rotation.y=a.yaw}}
+function netTick(dt){
+ if(net.role==='host'){
+  if(net.queue.length&&net.conns.size){const batch={t:'ev',l:net.queue};for(const c of net.conns.values())if(c.open)c.send(batch)}net.queue=[];
+  for(const[id,o]of net.others)if(o.x!==undefined)setAvatar(id,o.x,o.y,o.z,o.yaw,o.name||'Spieler');
+  net.posT+=dt;if(net.posT>.1&&net.conns.size){net.posT=0;const msg={t:'players',l:playerList()};for(const c of net.conns.values())if(c.open)c.send(msg)}
+  net.syncT+=dt;if(net.syncT>.5&&net.conns.size){net.syncT=0;const msg=syncMsg();for(const c of net.conns.values())if(c.open)c.send(msg)}}
+ else{net.queue=[];if(net.role==='client'){net.posT+=dt;if(net.posT>.1){net.posT=0;netSend({t:'pos',x:P.x,y:P.y,z:P.z,yaw:P.yaw,name:myName()})}}}
+ updateAvatars(dt)}
+$('hostb').onclick=()=>{saveName();hostGame()};$('joinb').onclick=()=>{saveName();joinGame()};$('leaveb').onclick=()=>leaveCoop();
+$('joincode').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){saveName();joinGame()}});$('pname').addEventListener('keydown',e=>e.stopPropagation());
+function saveName(){try{localStorage.setItem('satiscraft-name',myName())}catch(e){}}
+try{$('pname').value=(localStorage.getItem('satiscraft-name')||'').slice(0,16)}catch(e){}
 
 // ---------- Start ----------
 let saved=null;try{const raw=localStorage.getItem(KEY);if(raw&&raw.length<2e7)saved=sanitize(JSON.parse(raw))}catch(e){saved=null}

@@ -35,9 +35,22 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Meilensteine:** Oben links steht jeweils der nächste Schritt.
 - **Speichern:** Der Spielstand wird im `localStorage` des Browsers gespeichert.
 
+## Koop (bis zu 4 Spieler)
+
+1. Ein Spieler öffnet das Spiel auf `https://frozenenenen.github.io/Satiscraft/` und klickt im Pause-Menü (Esc) auf **Spiel hosten**. Er bekommt einen 5-stelligen Raumcode.
+2. Die anderen geben im Pause-Menü den Code ein und klicken **Beitreten**.
+
+- **Welt und Fortschritt:** Die Welt des Hosts wird geteilt. Inventar, Werkzeugstufe und Meilensteine sind gemeinsam.
+- **Wer was berechnet:** Der Host berechnet die Welt. Mitspieler schicken nur Aktionen, der Host prüft jede einzelne.
+- **Speichern:** Gespeichert wird nur beim Host. Mitspieler kehren nach dem Verlassen zu ihrer eigenen Welt zurück.
+- **Tab aktiv lassen:** Der Host sollte seinen Tab im Vordergrund lassen, weil Browser Hintergrund-Tabs drosseln.
+- **Verbindung:** Die Browser verbinden sich direkt per WebRTC. Den Verbindungsaufbau vermittelt der öffentliche PeerJS-Server `0.peerjs.com`. Dabei sehen sich die Mitspieler gegenseitig ihre IP-Adressen.
+- **Nicht im Artifact:** In der Claude-Artifact-Vorschau funktioniert Koop nicht, dort ist WebRTC gesperrt.
+
 ## Sicherheit
 
-- **Content Security Policy:** `index.html` setzt eine strenge CSP. Skripte kommen nur aus `game.js` und dem festen three.js-Pfad auf cdnjs, Inline-Skripte sind gesperrt. Es gibt keine Netzwerkverbindungen (`connect-src 'none'`), keine Plugins, Formulare oder `<base>`.
+- **Content Security Policy:** `index.html` setzt eine strenge CSP. Skripte kommen nur aus `game.js` und dem festen three.js-Pfad auf cdnjs, Inline-Skripte sind gesperrt. Netzwerkverbindungen gehen nur zum Koop-Vermittlungsserver, es gibt keine Plugins, Formulare oder `<base>`.
 - **Speicherstände:** Sie werden beim Laden streng geprüft, weil sich auf `*.github.io` alle Pages-Seiten eines Kontos denselben `localStorage` teilen. Nur bekannte Item- und Gebäudetypen, gültige Zahlen und Koordinaten innerhalb der Welt werden übernommen. Kaputte Stände führen zu einer neuen Welt statt zu einem Absturz.
 - **Keine Nutzerdaten:** Das Spiel hat kein Backend, keine Cookies und kein Tracking. Die Seite sendet keinen Referrer.
+- **Koop:** Netzwerkzugriffe sind nur zu `0.peerjs.com` erlaubt, PeerJS 1.5.4 wird mit SRI-Hash geladen. Der Host prüft jede Nachricht von Mitspielern (Typen, Koordinaten, Item-Namen, Kosten, Werkzeugstufe), Mitspieler prüfen alle Daten vom Host. Spielernamen werden nur als Text gezeichnet, nie als HTML.
 - **Subresource Integrity:** three.js r128 wird mit einem SHA-384-Hash geladen. Eine veränderte CDN-Datei führt der Browser nicht aus.
