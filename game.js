@@ -44,7 +44,7 @@ const BUILD={
  workbench:{n:'Werkbank',w:2,d:2,h:2,cost:{wood:8},ins:[],outs:[],desc:'Stellt Spitzhacken her. [E] zum Öffnen.'},
  chest:{n:'Lagerkiste',w:1,d:1,h:1,cost:{wood:6},ins:'all',outs:[[0,1,0]],store:999,desc:'Nimmt Items aus jeder Richtung auf, Ausgang vorne (Dispenser, gibt standardmäßig alles aus, im Fenster einstellbar). Fasst 999 Items.'},
  container:{n:'Lagercontainer',w:2,d:2,h:2,cost:{wood:20,iron_bar:8},ins:[[0,-1,0],[1,-1,0],[-1,0,3],[2,0,1]],outs:[[0,2,0],[1,2,0]],store:1500,desc:'Großes Lager mit 4 Eingängen (hinten 2, seitlich je 1) und 2 Ausgängen vorne. Fasst 1.500 Items.'},
- warehouse:{n:'Industrielager',w:3,d:3,h:2,cost:{iron_plate:20,steel:5},ins:[[0,-1,0],[1,-1,0],[2,-1,0],[-1,1,3],[3,1,1]],outs:[[0,3,0],[1,3,0],[2,3,0]],store:5000,desc:'Sehr großes Lager mit 5 Eingängen (hinten 3, seitlich je 1) und 3 Ausgängen vorne. Fasst 5.000 Items.'},
+ warehouse:{n:'Industrielager',w:3,d:3,h:2,cost:{iron_plate:20,steel:5},ins:[[0,-1,0],[1,-1,0],[2,-1,0],[-1,1,3],[3,1,1]],outs:[[0,3,0],[1,3,0],[2,3,0]],store:5000,desc:'Sehr großes Lager mit 5 Eingängen (hinten 3, seitlich je 1) und 3 Ausgängen vorne, je Ausgang einstellbar. Fasst 5.000 Items.'},
  belt:{n:'Förderband',w:1,d:1,h:1,cost:{copper_bar:1},ins:[],outs:[],desc:'Klick setzt ein Band in Blickrichtung. Shift + Ziehen legt eine Linie, die der Zugrichtung folgt (auch Kurven). Stufen ±1 Block möglich.'},
  bridge1:{n:'Förderbandbrücke',w:1,d:3,h:2,cost:{iron_bar:4,copper_bar:2},ins:[[0,-1,0]],outs:[[0,3,0]],bridge:1,desc:'Überspannt 1 Feld: Darunter kann ein Band quer durchlaufen. Eingang hinten, Ausgang vorne.'},
  bridge3:{n:'Lange Förderbandbrücke',w:1,d:5,h:2,cost:{iron_plate:6,rod:4},ins:[[0,-1,0]],outs:[[0,5,0]],bridge:1,desc:'Überspannt 3 Felder für mehrere Bänder oder Hindernisse.'},
@@ -419,7 +419,7 @@ function createMachine(type,ox,oy,oz,rot,data){
  m.cells=cellsOf(def,ox,oy,oz,rot).map(c=>idx(c.x,c.y,c.z));
  for(const i of m.cells){setI(i,MACH);machineAt.set(i,m);markDirty(kX(i),kY(i),kZ(i))}
  const mp=l=>Array.isArray(l)?l.map(([lx,lz,ld])=>{const[a,b]=toW(def,rot,lx,lz);return{x:ox+a,y:oy,z:oz+b,dir:(ld+rot)%4}}):[];
- m.ins=mp(def.ins);m.outs=mp(def.outs);
+ m.ins=mp(def.ins);m.outs=mp(def.outs);if(def.store){m.disp=normDisp(m.disp,m.outs.length);m.di=m.outs.map(()=>0);m.ps=m.outs.map(()=>'')}
  if(def.router&&data){for(const k in m.outBuf)for(let i=0;i<m.outBuf[k]&&m.tr.length<4;i++)m.tr.push({item:k});m.outBuf={}}
  // Abbauziel nur beim Aufstellen automatisch wählen; geladene Miner behalten ihre gespeicherte Einstellung.
  if(def.miner&&!data){m.recipe=0;let ore=false;minerArea(m,()=>{ore=true;return true});if(!ore)m.recipe=1}
@@ -476,14 +476,19 @@ function minerArea(m,fn){const def=BUILD[m.type];for(let y=m.y-1;y>=Math.max(1,m
  const id=get(x,y,z);if(m.recipe===1?id===3:(BL[id]&&BL[id].ore&&BL[id].tier<=def.tier)){if(fn(x,y,z,id))return}}}
 const bridgePath=(def,f)=>[.27+1.25*Math.min(1,Math.sin(Math.PI*f)*1.6),-def.d/2+f*def.d];
 // Lager als Dispenser: gibt das gewählte Item (oder reihum alle) an freie Bänder an den Ausgängen ab.
-function dispense(m){m.working=false;if(!m.disp){m.status='Ausgabe aus – im Fenster [E] einschalten';return}
- let nb=0,wrong=0,full=0,gave=false;
- for(const p of m.outs){const b=belts.get(idx(p.x,p.y,p.z));if(!b){nb++;continue}if(b.dir===(p.dir+2)%4){wrong++;continue}if(!beltFree(b)){full++;continue}
-  let it=null;if(m.disp==='all'){const ks=Object.keys(m.inBuf).filter(k=>m.inBuf[k]>0);if(ks.length){m.di=((m.di||0)+1)%ks.length;it=ks[m.di]}}
-  else if((m.inBuf[m.disp]||0)>0)it=m.disp;
-  if(!it){m.status=m.disp==='all'?'Leer':'Kein '+ITEMS[m.disp][0]+' im Lager';return}gave=true;m.inBuf[it]--;if(!m.inBuf[it])delete m.inBuf[it];b.items.push({item:it,p:0});m.working=true;m.pulse=Math.max(m.pulse||0,.35)}
- if(gave)m.status='Gibt aus…';else if(full)m.status='Band am Ausgang voll';else if(wrong)m.status='Band am Ausgang zeigt zum Lager – umdrehen';
- else m.status='Kein Band am Ausgang (oranger Pfeil, auf Bodenhöhe des Lagers)'}
+const dispOk=v=>v==='all'||(typeof v==='string'&&own(ITEMS,v))?v:null;
+function normDisp(v,n){return Array.from({length:n},(_,i)=>dispOk(Array.isArray(v)?v[i]:v))}
+const portName=(m,i)=>m.outs.length===1?'Ausgang':m.outs.length===2?['Ausgang links','Ausgang rechts'][i]:['Ausgang links','Ausgang Mitte','Ausgang rechts'][i];
+function dispense(m){m.working=false;let gave=false;
+ m.outs.forEach((p,i)=>{const sel=m.disp[i];let st;
+  if(!sel)st='aus';else{const b=belts.get(idx(p.x,p.y,p.z));
+   if(!b)st='kein Band (oranger Pfeil, Bodenhöhe)';else if(b.dir===(p.dir+2)%4)st='Band zeigt zum Lager – umdrehen';else if(!beltFree(b))st='Band voll';
+   else{let it=null;if(sel==='all'){const ks=Object.keys(m.inBuf).filter(k=>m.inBuf[k]>0&&!m.disp.includes(k));if(ks.length){m.di[i]=(m.di[i]+1)%ks.length;it=ks[m.di[i]]}}else if((m.inBuf[sel]||0)>0)it=sel;
+    if(!it)st=sel==='all'?(m.disp.some(v=>v&&v!=='all')?'nichts Übriges im Lager':'Lager leer'):'kein '+ITEMS[sel][0]+' im Lager';
+    else{m.inBuf[it]--;if(!m.inBuf[it])delete m.inBuf[it];b.items.push({item:it,p:0});gave=true;st='gibt aus'}}}
+  if(st!=='Band voll'||m.ps[i]!=='gibt aus')m.ps[i]=st});
+ if(gave){m.working=true;m.pulse=Math.max(m.pulse||0,.35)}
+ m.status=m.disp.every(v=>!v)?'Ausgabe aus – im Fenster [E] einschalten':m.outs.map((p,i)=>(m.outs.length>1?portName(m,i).replace('Ausgang ','')+': ':'')+m.ps[i]).join(' · ')}
 function tickMachine(m,dt){
  const def=BUILD[m.type];
  if(def.miner&&net.role==='client')return; // Abbau läuft nur beim Host, Zustand kommt per Sync
@@ -576,8 +581,9 @@ function renderPanel(){
    <p class="mut">Position: ${m.x}, ${m.y}, ${m.z}</p>`}
   else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>`}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>
-   <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3><div class="recs">${[['off','Aus'],['all','Alles'],...[...new Set([...Object.keys(m.inBuf),...(m.disp&&m.disp!=='all'?[m.disp]:[])])].map(k=>[k,ITEMS[k][0]])].map(([k,n])=>`<button class="rec ${(m.disp||'off')===k?'on':''}" data-act="disp:${k}">${n}</button>`).join('')}</div>
-   <p><b>Status:</b> ${esc(m.status||'')}</p><p class="mut">${m.disp?`Gibt ${m.disp==='all'?'alle Items reihum':ITEMS[m.disp][0]} an Bänder an den orangen Pfeilen ab.`:'Ausgabe ist aus. Wähle „Alles“ oder ein bestimmtes Item.'}</p>`}
+   <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3>${m.outs.length>1?'<p class="mut">Links/rechts gesehen, wenn du vor den orangen Pfeilen stehst und auf das Lager schaust. „Alles“ gibt alles aus, was kein anderer Ausgang ausgibt.</p>':''}
+   ${m.outs.map((p,i)=>{const cur=m.disp[i]||'off';const opts=[['off','Aus'],['all','Alles'],...[...new Set([...Object.keys(m.inBuf),...(m.disp[i]&&m.disp[i]!=='all'?[m.disp[i]]:[])])].map(k=>[k,ITEMS[k][0]])];
+    return`<div class="dsp"><b>${portName(m,i)}</b> <span class="mut">– ${esc(m.ps[i]||'')}</span><div class="recs">${opts.map(([k,n])=>`<button class="rec ${cur===k?'on':''}" data-act="disp:${i}.${k}">${n}</button>`).join('')}</div></div>`}).join('')}`}
   else if(def.miner){let left=0,blocks=0;minerArea(m,(x,y,z)=>{const k=idx(x,y,z);left+=reserves.has(k)?reserves.get(k):RESERVE;blocks++});
    h+=`<h3>Abbauziel</h3><div class="recs">${['Erze','Stein'].map((n,i)=>`<button class="rec ${i===m.recipe?'on':''}" data-act="recipe:${i}">${n}</button>`).join('')}</div>
    <p>${m.status||'Startet…'}</p><p class="mut">Abbaubereich: ${m.rw+2}×${m.rd+2} Felder, bis 12 Blöcke tief. Verbleibend: <b style="color:var(--ink)">${left}</b> Einheiten in ${blocks} ${m.recipe===1?'Steinblöcken':'Erzblöcken'}.</p>
@@ -608,7 +614,7 @@ function panelAct(m,act,arg){
  if(act==='rename'){if(BUILD[m.type].beacon&&typeof arg==='string'){m.name=cleanName(arg);toast('Barke heißt jetzt „'+m.name+'“')}return}
  if(act==='gadget'){const g=GADGETS[arg];if(m.type==='workbench'&&g&&own(GADGETS,arg)&&!gadgets[arg]&&has(g.cost)){for(const k in g.cost)add(k,-g.cost[k]);gadgets[arg]=true;m.pulse=1.4;toast(g.n+' hergestellt'+(arg==='radar'?' – Taste F':''))}return}
  if(act==='purge'){purgeInputs(m);return}
- if(act==='disp'){if(BUILD[m.type].store&&(arg==='off'||arg==='all'||own(ITEMS,arg)))m.disp=arg==='off'?null:arg;return}
+ if(act==='disp'){if(!BUILD[m.type].store||typeof arg!=='string')return;const[pi,k]=arg.split('.');const i=+pi;if(!isInt(i,0,m.outs.length-1))return;if(k==='off')m.disp[i]=null;else if(dispOk(k))m.disp[i]=k;return}
  if(act==='takeall'&&BUILD[m.type].store){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};return}
  if(!own(ITEMS,arg))return;
  if(act==='put'&&BUILD[m.type].turret){const T=BUILD[m.type].turret;if(T.ammo!==arg)return;const n=Math.min(inv[arg]||0,200-(m.inBuf[arg]||0));if(n>0){add(arg,-n);m.inBuf[arg]=(m.inBuf[arg]||0)+n}return}
@@ -683,7 +689,7 @@ function dragBelt(){const k=place.ox+','+place.oy+','+place.oz;if(k===lastBelt||
 // ---------- Speichern / Laden ----------
 function snapshot(){return{v:2,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,defeats:td.defeats,kills:td.kills,path:td.path,
   en:enemies.map(e=>[e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)]),q:spawnQ.map(q=>q.ty)},seed,dv:1,changes:[...changes],res:[...reserves],inv,tier,gadgets,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
- machines:machines.map(m=>{const o={...m.outBuf};for(const it of m.tr)o[it.item]=(o[it.item]||0)+1;return{t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o,rc:m.recipe,ds:m.disp||undefined,nm:m.name||undefined}}),
+ machines:machines.map(m=>{const o={...m.outBuf};for(const it of m.tr)o[it.item]=(o[it.item]||0)+1;return{t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o,rc:m.recipe,ds:m.disp&&m.disp.some(Boolean)?m.disp:undefined,nm:m.name||undefined}}),
  belts:[...belts.values()].map(b=>[b.x,b.y,b.z,b.dir,b.items.map(i=>i.item)])}}
 function save(){if(net.role==='client'){toast('Im Koop speichert der Host');return false}try{const data=snapshot();
  localStorage.setItem(KEY,JSON.stringify(data));lastSave=new Date();toast('Spiel gespeichert');saveFeedback(true);return true}catch(e){toast('Speichern in diesem Browser nicht möglich');saveFeedback(false);return false}}
@@ -717,7 +723,7 @@ function sanitize(d){
  for(const[k,a,b]of[['x',-LIM,LIM],['y',-5,H+5],['z',-LIM,LIM],['yaw',-1e6,1e6],['pitch',-1.55,1.55]])if(isNum(p[k],a,b))o.P[k]=p[k];
  for(const m of arr(d.machines)){if(!m||typeof m!=='object'||!own(BUILD,m.t)||m.t==='belt')continue;
   if(!isXZ(m.x)||!isInt(m.y,1,H-1)||!isXZ(m.z)||!isInt(m.r,0,3))continue;
-  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0,nm:BUILD[m.t].beacon&&typeof m.nm==='string'?cleanName(m.nm):undefined,ds:BUILD[m.t].store&&(m.ds==='all'||(typeof m.ds==='string'&&own(ITEMS,m.ds)))?m.ds:null})}
+  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0,nm:BUILD[m.t].beacon&&typeof m.nm==='string'?cleanName(m.nm):undefined,ds:BUILD[m.t].store?(Array.isArray(m.ds)?m.ds.slice(0,3).map(dispOk):dispOk(m.ds)):null})}
  for(const b of arr(d.belts)){if(!Array.isArray(b)||!isXZ(b[0])||!isInt(b[1],1,H-1)||!isXZ(b[2])||!isInt(b[3],0,3))continue;
   o.belts.push([b[0],b[1],b[2],b[3],arr(b[4]).filter(k=>typeof k==='string'&&own(ITEMS,k)).slice(0,4)])}
  return o}
@@ -1113,7 +1119,7 @@ function applyAction(d){const ok3=()=>isXZ(d.x)&&isInt(d.y,1,H-1)&&isXZ(d.z);
  else if(d.a==='panel'){if(!isKey(d.k)||!PANEL_ACTS.includes(d.act))return;const m=machineAt.get(d.k);if(m&&(typeof d.arg==='string'||d.arg===undefined))panelAct(m,d.act,d.arg)}
  renderHotbar()}
 function syncMsg(){return{t:'sync',inv,tier,goal,gadgets,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,kills:td.kills,defeats:td.defeats,en:enemies.map(e=>[e.id,e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)])},
- m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1]),m.disp||0,m.name||0]),
+ m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1]),m.disp||0,m.name||0,m.ps||0]),
  b:[...belts.entries()].map(([k,b])=>[k,b.items.map(i=>[i.item,+i.p.toFixed(2)])])}}
 // --- Mitspieler ---
 // Gast: Verbindungsaufbau in Schritten mit Diagnose
@@ -1166,7 +1172,7 @@ function applySync(d){applyTdSync(d.td);inv=cleanBag(d.inv,1e9);gadgets={radar:!
  for(const r of arr(d.m)){if(!Array.isArray(r)||!isKey(r[0]))continue;const m=machineAt.get(r[0]);if(!m)continue;const def=BUILD[m.type];
   m.inBuf=cleanBag(r[1],def.store||1e5);m.outBuf=cleanBag(r[2],1e5);if(isInt(r[3],0,9))m.recipe=r[3];if(isNum(r[4],0,1e4))m.t=r[4];m.working=!!r[5];
   if(def.beacon&&typeof r[8]==='string')m.name=cleanName(r[8]);
-  if(def.store)m.disp=r[7]==='all'||(typeof r[7]==='string'&&own(ITEMS,r[7]))?r[7]:null;
+  if(def.store){m.disp=normDisp(r[7],m.outs.length);if(Array.isArray(r[9]))m.ps=m.outs.map((_,i)=>typeof r[9][i]==='string'?r[9][i].slice(0,60):'')}
   m.tr=arr(r[6]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])).slice(0,def.bridge?def.d*3:4).map(x=>({item:x[0],t:isNum(x[1],0,1e4)?x[1]:0,pi:isInt(x[2],0,2)?x[2]:undefined}))}
  for(const r of arr(d.b)){if(!Array.isArray(r)||!isKey(r[0]))continue;const b=belts.get(r[0]);if(!b)continue;
   b.items=arr(r[1]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])&&isNum(x[1],0,1)).slice(0,4).map(x=>({item:x[0],p:x[1]}))}
