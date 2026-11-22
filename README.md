@@ -65,6 +65,12 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 
 Im Pause-Menü (Esc) stellst du die Sichtweite ein: 4, 6, 8, 10, 12 oder 16 Chunks (64–256 m). Mehr Sichtweite braucht mehr Grafikleistung. Neue Gebiete werden mit einem festen Zeitbudget pro Frame geladen.
 
+## Leistungsdiagnose (F3)
+
+- **1× F3:** FPS, Frame-Zeit und 1 %-Tief.
+- **2× F3:** Frame-Zeit-Graph, Zeit pro Bereich (Weltgenerierung, Fabrik, Rendern …), Draw Calls, Dreiecke, geladene Spalten, Gebäude, Gegner, Partikel und Speicher. Darunter steht ein Tipp zum größten Verbraucher.
+- **3× F3:** aus. Die Einstellung bleibt gespeichert.
+
 ## Koop (bis zu 4 Spieler)
 
 1. Ein Spieler öffnet das Spiel auf `https://frozenenenen.github.io/Satiscraft/` und klickt im Pause-Menü (Esc) auf **Spiel hosten**. Er bekommt einen 5-stelligen Raumcode.

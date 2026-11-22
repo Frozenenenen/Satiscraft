@@ -39,6 +39,8 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 .cm.base{color:#f29a2e}.cm.bk{color:#4fe3ff}.cm.edge{opacity:.85}
 @media(max-width:1300px){#goal{top:100px}#coophud{top:100px}#radar{top:144px}}
 #coopsteps{list-style:none;margin:6px 0 0;padding:0;font-size:14px}#coopsteps li{padding:2px 0}#coopsteps .ok{color:var(--ok)}#coopsteps .bad{color:var(--bad);font-weight:700}#coopsteps .run{color:var(--acc)}#coopsteps .todo{color:#6b737c}#coopsteps .why{color:var(--ink);background:#3a1f1b;border-left:3px solid var(--bad);padding:8px 10px;margin-top:6px;border-radius:4px}
+#perf{position:fixed;z-index:22;left:10px;top:140px;display:none;background:#121519d9;border:1px solid #ffffff1f;border-radius:6px;padding:6px 9px;font:12px/1.35 ui-monospace,Consolas,monospace;color:#d8dde3;pointer-events:none;max-width:300px}
+#perf .pf b{font-size:18px}#perf .ok b{color:var(--ok)}#perf .warn b{color:var(--acc)}#perf .bad b{color:var(--bad)}#perf table{border-collapse:collapse;margin:4px 0;width:100%}#perf td{padding:0 4px 0 0;white-space:nowrap}#perf .r{text-align:right}#perf i{display:inline-block;height:7px;background:var(--acc);border-radius:2px}#perf .sum td{border-top:1px solid #ffffff2a}#perf canvas{display:block;margin:4px 0;background:#0007}#perf .tip{margin-top:4px;padding:4px 6px;border-left:3px solid var(--acc);background:#3a2f16;white-space:normal}#perf .mut{color:#8d959e}
 #joinreq{position:fixed;z-index:25;left:50%;top:98px;transform:translateX(-50%);display:none;background:#1f2329;border:2px solid var(--acc);border-radius:8px;padding:8px 12px;box-shadow:0 10px 30px #000a}
 #joinreq .jr{display:flex;gap:10px;align-items:center;padding:4px 0}
 #tdhud{left:50%;top:66px;transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:#16191dd9;padding:4px 12px;border-radius:4px;font-size:13px;white-space:nowrap}
@@ -115,6 +117,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="compass" class="hud"><div id="cstrip"></div><i class="cc"></i></div>
 <div id="tdhud" class="hud"></div>
 <div id="joinreq" role="alert"></div>
+<div id="perf" aria-live="off"></div>
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
 <div id="coophud" class="hud"></div>
@@ -140,6 +143,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
      <tr><td>E</td><td>Maschine öffnen</td></tr>
      <tr><td>I</td><td>Inventar</td></tr>
      <tr><td>F / Shift+F</td><td>Erzradar (an der Werkbank herstellen): Erzart wechseln / aus</td></tr>
+     <tr><td>F3</td><td>Leistungsanzeige: FPS → Details → aus</td></tr>
     </table></div>
    <div><h3>So funktioniert’s</h3>
     <p>Erzvorkommen liegen in der Welt. Jeder Erzblock unter einem <b>Miner</b> enthält 40 Einheiten; der Miner trägt den Bereich darunter Schicht für Schicht ab.</p>
@@ -166,6 +170,6 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=38"></script>
+<script src="game.js?v=39"></script>
 </body>
 </html>

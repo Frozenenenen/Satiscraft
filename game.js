@@ -620,6 +620,7 @@ addEventListener('keydown',e=>{
  if(['Tab','Space'].includes(e.code))e.preventDefault();
  if(panel){if(panel.kind==='build'&&e.code.startsWith('Digit')){const i=+e.code.slice(5)-1;if(i>=0&&i<CATS.length){buildCat=i;try{localStorage.setItem('satiscraft-cat',String(i))}catch(e){}renderPanel()}return}
   if(['Escape','KeyE','KeyI','KeyQ','Tab'].includes(e.code))closePanel();return}
+ if(e.code==='F3'){e.preventDefault();if(!e.repeat)cyclePerf();return}
  if(e.code==='Escape'&&e.repeat)return;
  if(!locked){if(e.code==='Escape'&&$('pause').classList.contains('on'))resume();return}
  if(e.code==='Escape')return pause();keys[e.code]=true;
@@ -931,11 +932,46 @@ function updateViewModel(dt){
 
 // ---------- Hauptschleife ----------
 let lastBiome=-1,last=performance.now(),slow=0,saveT=0,time=0;
+// ---------- Leistungsdiagnose (F3: aus → FPS → Details) ----------
+let perfMode=(()=>{try{return+localStorage.getItem('satiscraft-perf')||0}catch(e){return 0}})()%3;
+const perf={hist:new Float32Array(240),hi:0,sec:{},acc:{},n:0,t0:0,last:0,secT:0,fps:0,low:0,max:0,js:0,show:{},cnt:0};
+renderer.info.autoReset=false;
+function cyclePerf(){perfMode=(perfMode+1)%3;try{localStorage.setItem('satiscraft-perf',perfMode)}catch(e){}$('perf').style.display=perfMode?'block':'none';perf.secT=1}
+function perfStart(fdt){if(!perfMode)return;perf.hist[perf.hi]=fdt;perf.hi=(perf.hi+1)%240;perf.t0=perf.last=performance.now();perf.cnt++;perf.secT+=fdt/1000}
+function pm(name){if(perfMode<2)return;const t=performance.now();perf.acc[name]=(perf.acc[name]||0)+(t-perf.last);perf.last=t}
+function perfEnd(){if(!perfMode)return;perf.js+=performance.now()-perf.t0;if(perf.secT<.5)return;
+ const a=[...perf.hist].filter(v=>v>0).sort((x,y)=>x-y),n=a.length,avg=a.reduce((x,y)=>x+y,0)/Math.max(1,n);
+ perf.fps=1000/avg;perf.low=1000/(a[Math.floor(n*.99)]||avg);perf.max=a[n-1]||0;
+ const js=perf.js/perf.cnt,sec={};for(const k in perf.acc)sec[k]=perf.acc[k]/perf.cnt;perf.acc={};perf.js=0;perf.cnt=0;perf.secT=0;renderPerf(avg,js,sec)}
+function renderPerf(avg,js,sec){const el=$('perf'),col=perf.fps>=55?'ok':perf.fps>=30?'warn':'bad';
+ let h=`<div class="pf ${col}"><b>${perf.fps.toFixed(0)}</b> FPS <span class="mut">· ${avg.toFixed(1)} ms · 1%-Tief ${perf.low.toFixed(0)} FPS</span></div>`;
+ if(perfMode===2){const ri=renderer.info,gpu=Math.max(0,avg-js);
+  let loaded=0,meshes=0;for(const c of cols.values()){loaded++;for(const m of c.m)if(m)meshes++}
+  const items=[...belts.values()].reduce((x,b)=>x+b.items.length,0),pts=parts.filter(p=>p.life>0).length;
+  const rows=Object.entries(sec).sort((x,y)=>y[1]-x[1]);const mx=Math.max(1,...rows.map(r=>r[1]));
+  h+=`<canvas id="pfg" width="240" height="44"></canvas><table>`+rows.map(([k,v])=>`<tr><td>${k}</td><td class="r">${v.toFixed(2)} ms</td><td><i style="width:${Math.round(v/mx*60)}px"></i></td></tr>`).join('')+
+   `<tr class="sum"><td>JavaScript gesamt</td><td class="r">${js.toFixed(2)} ms</td><td></td></tr><tr><td>Rest (GPU, Browser, Warten)</td><td class="r">${gpu.toFixed(1)} ms</td><td></td></tr></table>`+
+   `<div class="mut">Draw Calls ${ri.render.calls} · Dreiecke ${(ri.render.triangles/1000).toFixed(0)}k · Geometrien ${ri.memory.geometries}<br>Spalten ${loaded} · Chunk-Meshes ${meshes} · Warteschlange ${dirty.size}<br>Gebäude ${machines.length} · Bänder ${belts.size} · Items auf Bändern ${items}<br>Gegner ${enemies.length} · Partikel ${pts} · Sichtweite ${RD} · Auflösung ${renderer.domElement.width}×${renderer.domElement.height}`+
+   (performance.memory?` · JS-Speicher ${(performance.memory.usedJSHeapSize/1048576).toFixed(0)} MB`:'')+`</div>`;
+  // Einschätzung: größter Verbraucher + Tipp
+  const top=rows[0]||['',0],tips=[];
+  if(perf.fps<50){if(gpu>js&&gpu>8)tips.push('Grafikkarten-limitiert: Sichtweite senken oder Fenster verkleinern. Hardwarebeschleunigung im Browser prüfen.');
+   if(top[0]==='Weltgenerierung'&&top[1]>3)tips.push('Neue Welt wird geladen. Das legt sich, sobald du stehst. Niedrigere Sichtweite hilft.');
+   if(top[0]==='Fabrik & Bänder'||top[0]==='Band-Items')tips.push('Die Fabrik ist teuer: viele Bänder/Items. Volle Bänder entlasten.');
+   if(top[0]==='Chunk-Meshes')tips.push('Viele Blockänderungen werden neu aufgebaut.');
+   if(top[0]==='Animation & Partikel')tips.push('Viele arbeitende Gebäude erzeugen Partikel.');
+   if(ri.render.calls>1500)tips.push('Sehr viele Draw Calls ('+ri.render.calls+') – Sichtweite senken.');
+   if(perf.max>100)tips.push('Einzelne Ruckler bis '+perf.max.toFixed(0)+' ms (z. B. Speichern, Weltladen).')}
+  h+=tips.length?`<div class="tip">${tips.map(esc).join('<br>')}</div>`:'';h+='<div class="mut">F3: weiter / aus</div>'}
+ el.innerHTML=h;
+ if(perfMode===2){const c=$('pfg'),x=c.getContext('2d');x.clearRect(0,0,240,44);x.strokeStyle='#ffffff22';[16.7,33.3].forEach(v=>{const y=44-v;x.beginPath();x.moveTo(0,y);x.lineTo(240,y);x.stroke()});
+  for(let i=0;i<240;i++){const v=perf.hist[(perf.hi+i)%240];x.fillStyle=v>33.4?'#ef5a4c':v>17.5?'#e8b04a':'#5fcf6f';x.fillRect(i,44-Math.min(44,v),1,Math.min(44,v))}}}
+$('perf').style.display=perfMode?'block':'none';
 function frame(now){
- requestAnimationFrame(frame);let dt=Math.min(.05,(now-last)/1000);last=now;time+=dt;
+ requestAnimationFrame(frame);const fdt=now-last;let dt=Math.min(.05,fdt/1000);last=now;time+=dt;perfStart(fdt);
  if(locked)movePlayer(dt);
  camera.position.set(P.x,P.y+1.62,P.z);camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
- if(slopesDirty)updateSlopes();for(const m of machines)tickMachine(m,dt);updateBelts(dt);drawItems();beltTex.offset.y=(beltTex.offset.y+BS*dt)%1;
+ pm('Spieler');if(slopesDirty)updateSlopes();for(const m of machines)tickMachine(m,dt);updateBelts(dt);pm('Fabrik & Bänder');drawItems();beltTex.offset.y=(beltTex.offset.y+BS*dt)%1;pm('Band-Items');
  for(const m of machines){const a=m.a;if(m.pulse>0)m.pulse=Math.max(0,m.pulse-dt);
   if(a.lid)a.lid.rotation.x=-Math.sin(m.pulse/.35*Math.PI)*(a.lamp||.55);
   if(a.hammer)a.hammer.rotation.x=m.pulse>0?-Math.abs(Math.sin(m.pulse*11))*1.1:0;
@@ -950,10 +986,10 @@ function frame(now){
   if(a.arm){a.arm.rotation.y=Math.sin(time*2)*1.2;a.arm.rotation.x=Math.sin(time*3.1)*.12}
   if(a.emit.length&&(m.type!=='workbench'||m.pulse>0)){m.emitT-=dt;if(m.emitT<=0){m.emitT=PK[a.emit[0].k].rate*(.7+Math.random()*.6);
    for(const e of a.emit){tmpV.set(e.p[0],e.p[1],e.p[2]);m.g.localToWorld(tmpV);emit(tmpV,e.k)}}}}
- updateParts(dt);
+ updateParts(dt);pm('Animation & Partikel');
  gameTime+=dt;updateDecay();
- let n=0;for(const k of dirty){dirty.delete(k);const cy=k%4,ck=(k-cy)/4,cx=Math.floor(ck/131072)-65536,cz=ck%131072-65536;buildChunk(cx,cy,cz);if(++n>=8)break}
- stream(dt,6);
+ let n=0;for(const k of dirty){dirty.delete(k);const cy=k%4,ck=(k-cy)/4,cx=Math.floor(ck/131072)-65536,cz=ck%131072-65536;buildChunk(cx,cy,cz);if(++n>=8)break}pm('Chunk-Meshes');
+ stream(dt,6);pm('Weltgenerierung');
  // Ziel & Abbau
  const h=locked&&!buildType?raycast(6):null;let info='';
  if(h){let tgt=null,nm='',sub='';
@@ -987,8 +1023,8 @@ function frame(now){
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').style.opacity=0}
  slow+=dt;if(slow>.3){slow=0;updateTdHud();{const b=biomeAt(Math.floor(P.x),Math.floor(P.z));if(b!==lastBiome){lastBiome=b;renderHotbar()}}if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
  saveT+=dt;if(saveT>60){saveT=0;if(locked&&net.role!=='client')save()}
- netTick(dt);
- tdUpdate(dt);updateViewModel(dt);updateRadar(dt);updateCompass();renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam)}
+ pm('Zielen, Bauvorschau, HUD');netTick(dt);pm('Netzwerk');
+ tdUpdate(dt);pm('Tower Defense');updateViewModel(dt);updateRadar(dt);updateCompass();pm('Kompass, Radar, Arm');renderer.info.reset();renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam);pm('Rendern (CPU)');perfEnd()}
 
 // ---------- Koop (PeerJS/WebRTC; der Host ist maßgeblich, Mitspieler senden nur Aktionen) ----------
 const NET_PREFIX='satiscraft-v2-',PCOL=['#f29a2e','#3d9bd6','#5fcf6f','#d65fb4'];
