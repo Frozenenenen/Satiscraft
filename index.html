@@ -37,8 +37,11 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 .cm{position:absolute;top:20px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-size:12px;line-height:1.1;white-space:nowrap;text-shadow:0 1px 2px #000}
 .cm b{font-size:11px}.cm i{font-style:normal;font-size:10px;color:#cfd5db}
 .cm.base{color:#f29a2e}.cm.bk{color:#4fe3ff}.cm.edge{opacity:.85}
-@media(max-width:1300px){#goal{top:72px}#coophud{top:72px}#radar{top:116px}}
-#mode{left:50%;top:70px;transform:translateX(-50%);background:#16191de6;padding:8px 16px;border-radius:4px;display:none;text-align:center}
+@media(max-width:1300px){#goal{top:100px}#coophud{top:100px}#radar{top:144px}}
+#tdhud{left:50%;top:66px;transform:translateX(-50%);display:flex;gap:14px;align-items:center;background:#16191dd9;padding:4px 12px;border-radius:4px;font-size:13px;white-space:nowrap}
+#tdhud .nt{color:#9bb7ff}#tdhud .bh{display:flex;align-items:center;gap:6px}#tdhud .bh i{display:inline-block;width:90px;height:8px;background:#0008;border-radius:4px;overflow:hidden}#tdhud .bh u{display:block;height:100%}
+#tdhud .na{color:#cfd5db}
+#mode{left:50%;top:100px;transform:translateX(-50%);background:#16191de6;padding:8px 16px;border-radius:4px;display:none;text-align:center}
 #mode b{color:var(--acc)}
 #bottom{left:50%;bottom:12px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px}
 #hotbar{display:flex;gap:6px}
@@ -107,6 +110,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="bar" class="hud"><i></i></div>
 <div id="goal" class="hud"></div>
 <div id="compass" class="hud"><div id="cstrip"></div><i class="cc"></i></div>
+<div id="tdhud" class="hud"></div>
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
 <div id="coophud" class="hud"></div>
@@ -141,6 +145,8 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
   <div class="btns"><button class="b" id="play">Spielen</button><button class="b sec" id="saveb">Speichern</button><button class="b sec" id="newb">Neue Welt</button></div>
   <p id="savestate" role="status" aria-live="polite"></p>
   <div id="settings"><h3>Einstellungen</h3>
+   <div class="crow"><span class="mut">Angriffe alle</span><div class="recs" id="waveopts" role="group" aria-label="Angriffe alle x Tage"></div></div>
+   <p id="tdsetup" style="font-size:14px;margin:8px 0"></p>
    <div class="crow"><span class="mut">Sichtweite</span><div class="recs" id="rdopts" role="group" aria-label="Sichtweite in Chunks"></div></div>
    <p class="mut" style="font-size:13px;margin:6px 0 0">Mehr Sichtweite braucht mehr Grafikleistung. Neue Gebiete werden nach und nach geladen.</p></div>
   <div id="coop"><h3>Koop – bis zu 4 Spieler</h3>
@@ -155,6 +161,6 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=34"></script>
+<script src="game.js?v=35"></script>
 </body>
 </html>

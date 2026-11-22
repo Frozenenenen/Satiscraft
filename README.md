@@ -47,6 +47,20 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Barken:** Barken baust du im Baumenü unter Werkstatt. Es sind Wegpunkte mit Lichtsäule. Im Fenster (E) kannst du sie benennen.
 - **Kompass:** Oben am Bildrand zeigt er die Himmelsrichtungen (Norden = Blickrichtung beim Start) sowie Marker mit Entfernung zur Basis und zu allen Barken.
 
+## Turmverteidigung
+
+- **Tag und Nacht:** Ein Tag dauert 12 Minuten, die Nacht davon etwa 4 Minuten. Uhrzeit, Tag und Zustand der Basis siehst du unter dem Kompass.
+- **Angriffe:** Alle x Tage (Einstellungen: Aus, 1, 2, 3, 5 oder 7) greifen zur Nacht Gegner an. Sie kommen aus einem Portal im Norden und laufen über einen festen, unzerstörbaren Pfad zum Basisturm.
+  - Mit jeder Welle kommen mehr Gegner, und sie halten mehr aus.
+  - Läufer greifen ab Welle 1 an, Brocken ab Welle 3, Flitzer ab Welle 5.
+- **Verteidigung** (Baumenü → Verteidigung):
+  - Die Balliste braucht keine Munition.
+  - Der Geschützturm braucht Munition. Der Konstruktor macht aus 1 Eisenbarren 6 Munition, du lieferst sie per Band oder legst sie mit E ein.
+  - Der Laserturm ist spät baubar und braucht keine Munition.
+  - Auf und über dem Pfad kann nicht gebaut werden.
+- **Basis:** Der Turm hat 1000 Lebenspunkte und regeneriert sich tagsüber. Fällt er, verschwinden die Gegner, und er steht mit halber Kraft wieder. Besiegte Gegner hinterlassen etwas Erz.
+- **Ältere Spielstände:** Im Pause-Menü kannst du für sie die Turmverteidigung nachträglich einrichten.
+
 ## Einstellungen
 
 Im Pause-Menü (Esc) stellst du die Sichtweite ein: 4, 6, 8, 10, 12 oder 16 Chunks (64–256 m). Mehr Sichtweite braucht mehr Grafikleistung. Neue Gebiete werden mit einem festen Zeitbudget pro Frame geladen.
