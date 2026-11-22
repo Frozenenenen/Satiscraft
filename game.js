@@ -319,6 +319,16 @@ function transfer(b,item){
  const pi=m.ins.findIndex(p=>p.x===b.x&&p.y===b.y&&p.z===b.z&&p.dir===b.dir);
  if(BUILD[m.type].ins==='all'||pi>=0){if(machineAccept(m,item,pi)){stats.delivered++;return true}}
  return false}
+// Falsche Items am Eingang: passt zu keinem (Auto-Ofen) bzw. nicht zum gewählten Rezept.
+function wrongFor(m,item){const def=BUILD[m.type],rs=RECIPES[m.type];if(!rs||def.bridge||def.router)return false;
+ if(rs[m.recipe].in[item]!==undefined)return false;return!(def.auto&&rs.some(q=>q.in[item]!==undefined))}
+function feederOf(b){for(let d=0;d<4;d++){const[dx,dz]=DIRS[d];for(const dy of[0,1,-1]){const f=belts.get(idx(b.x-dx,b.y+dy,b.z-dz));
+ if(f&&f.dir===d&&!(dy!==0&&beltAhead(f,0)))return f}}return null}
+function inputChains(m){const out=[];for(const p of m.ins){let b=belts.get(idx(p.x,p.y,p.z));if(!b||b.dir!==p.dir)continue;const seen=new Set();
+ for(let n=0;b&&n<30&&!seen.has(b);n++){seen.add(b);out.push(b);b=feederOf(b)}}return out}
+function wrongItems(m){const c={};for(const b of inputChains(m))for(const it of b.items)if(wrongFor(m,it.item))c[it.item]=(c[it.item]||0)+1;return c}
+function purgeInputs(m){let n=0;for(const b of inputChains(m)){const keep=[];for(const it of b.items){if(wrongFor(m,it.item)){add(it.item,1);n++}else keep.push(it)}b.items=keep}
+ if(n)toast(n+' falsche Items ins Inventar gelegt');return n}
 function updateBelts(dt){for(const b of belts.values()){const its=b.items;
  for(let i=0;i<its.length;i++){const lim=i===0?1:its[i-1].p-SP;its[i].p=Math.max(its[i].p,Math.min(its[i].p+BS*dt,lim))}
  if(its.length&&its[0].p>=1&&transfer(b,its[0].item))its.shift()}}
@@ -416,7 +426,7 @@ function renderPanel(){
     <div class="prog"><i style="width:${Math.min(100,m.t/def.period*100)}%"></i></div><h3>Ausgang</h3>${bufRows(m.outBuf,'take','Entnehmen')}`}
   else{const rs=RECIPES[m.type],r=rs[m.recipe];
    h+=`<h3>Rezept</h3><div class="recs">${rs.map((q,i)=>`<button class="rec ${i===m.recipe?'on':''}" data-act="recipe:${i}">${Object.keys(q.in).map(k=>q.in[k]+'× '+ITEMS[k][0]).join(' + ')} → ${Object.keys(q.out).map(k=>q.out[k]+'× '+ITEMS[k][0]).join(', ')} <span class="mut">(${q.t} s)</span></button>`).join('')}</div>
-   <p>${m.status||''}</p><div class="prog"><i style="width:${Math.min(100,m.t/r.t*100)}%"></i></div>
+   <p>${m.status||''}</p><div class="prog"><i style="width:${Math.min(100,m.t/r.t*100)}%"></i></div>${(()=>{const w=wrongItems(m),ks=Object.keys(w);return ks.length?`<div class="warn"><span><b>Eingang blockiert:</b> ${ks.map(k=>w[k]+'× '+sw(k)).join(', ')} passt nicht zum Rezept.</span><button class="b danger" data-act="purge">Falsche Items entfernen</button></div>`:''})()}
    <div class="cols"><div><h3>Eingang</h3>${Object.keys(r.in).map(k=>`<div class="row"><span>${m.inBuf[k]||0}/${MAXIN} ${sw(k)} <span class="mut">(Inventar: ${inv[k]||0})</span></span><button class="b sec" data-act="put:${k}" ${inv[k]?'':'disabled'}>Einlegen</button></div>`).join('')}</div>
    <div><h3>Ausgang</h3>${bufRows(m.outBuf,'take','Entnehmen')}</div></div>`}}
  if(h===panelHtml)return;panelHtml=h;pc.innerHTML=h}
@@ -431,10 +441,11 @@ $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
  if(m&&PANEL_ACTS.includes(act)){if(net.role==='client')netSend({t:'act',a:'panel',k:m.cells[0],act,arg});else panelAct(m,act,arg)}
  renderPanel();renderHotbar()});
-const PANEL_ACTS=['craft','recipe','put','take','takec','takeall'];
+const PANEL_ACTS=['craft','recipe','put','take','takec','takeall','purge'];
 function panelAct(m,act,arg){
  if(act==='craft'){const t=+arg;if(m.type==='workbench'&&TOOLREC[t]&&has(TOOLREC[t])&&tier===t-1){for(const k in TOOLREC[t])add(k,-TOOLREC[t][k]);tier=t;m.pulse=1.4;toast(TOOLS[t].n+' hergestellt')}}
  if(act==='recipe'){const i=+arg,n=BUILD[m.type].miner?2:RECIPES[m.type]?RECIPES[m.type].length:0;if(isInt(i,0,n-1)&&i!==m.recipe){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};m.recipe=i;m.t=0}}
+ if(act==='purge'){purgeInputs(m);return}
  if(act==='takeall'&&BUILD[m.type].store){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};return}
  if(!own(ITEMS,arg))return;
  if(act==='put'){const r=RECIPES[m.type]&&RECIPES[m.type][m.recipe];if(!r||r.in[arg]===undefined)return;const n=Math.min(inv[arg]||0,MAXIN-(m.inBuf[arg]||0));if(n>0){add(arg,-n);m.inBuf[arg]=(m.inBuf[arg]||0)+n}}
