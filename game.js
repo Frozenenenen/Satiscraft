@@ -263,13 +263,20 @@ function markDirty(x,y,z){const cx=x>>4,cy=y>>4,cz=z>>4,lx=x&15,ly=y&15,lz=z&15;
   if((ax===-1&&lx!==0)||(ax===1&&lx!==CS-1)||(ay===-1&&ly!==0)||(ay===1&&ly!==CS-1)||(az===-1&&lz!==0)||(az===1&&lz!==CS-1))continue;
   const X=cx+ax,Y=cy+ay,Z=cz+az;if(Y<0||Y>=H/CS)continue;const c=cols.get(colKey(X,Z));if(c&&c.shown)dirty.add(meshKey(X,Y,Z))}}
 // Streaming: Spalten im Umkreis erzeugen und zeichnen, ferne Spalten ausblenden (Daten bleiben erhalten).
-const RD=6,ORDER=[];for(let dx=-RD;dx<=RD;dx++)for(let dz=-RD;dz<=RD;dz++)if(dx*dx+dz*dz<=RD*RD+1)ORDER.push([dx,dz]);ORDER.sort((a,b)=>a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1]);
+// Sichtweite in Chunks (Einstellung). Nebel und Kamera-Sichtgrenze wachsen mit.
+const RD_OPTS=[4,6,8,10,12,16];let RD=6,ORDER=[];
+function setViewDist(n){RD=RD_OPTS.includes(n)?n:6;ORDER=[];for(let dx=-RD;dx<=RD;dx++)for(let dz=-RD;dz<=RD;dz++)if(dx*dx+dz*dz<=RD*RD+1)ORDER.push([dx,dz]);
+ ORDER.sort((a,b)=>a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1]);const r=RD*16;scene.fog.near=r*.45;scene.fog.far=r*1.12;camera.far=r*1.4+40;camera.updateProjectionMatrix();
+ try{localStorage.setItem('satiscraft-rd',String(RD))}catch(e){}}
+try{setViewDist(+(localStorage.getItem('satiscraft-rd')||6))}catch(e){setViewDist(6)}
 let unloadT=0;
-function stream(dt,genBudget,meshBudget){const pcx=Math.floor(P.x)>>4,pcz=Math.floor(P.z)>>4;let g=0,mb=0;
- for(const[dx,dz]of ORDER){if(mb>=meshBudget&&g>=genBudget)break;const cx=pcx+dx,cz=pcz+dz;let c=cols.get(colKey(cx,cz));
-  if(!c){if(g>=genBudget)continue;c=genCol(cx,cz);g++}
-  if(c.shown||mb>=meshBudget)continue;let ok=true;
-  for(let ax=-1;ax<=1;ax++)for(let az=-1;az<=1;az++)if(!cols.has(colKey(cx+ax,cz+az))){if(g<genBudget){genCol(cx+ax,cz+az);g++}else ok=false}
+// Zeitbudget pro Frame (ms): mindestens eine Spalte erzeugen und eine zeichnen, danach so viel wie ins Budget passt.
+function stream(dt,ms){const t0=performance.now(),pcx=Math.floor(P.x)>>4,pcz=Math.floor(P.z)>>4;let g=0,mb=0;
+ const genOk=()=>g<1||performance.now()-t0<ms,meshOk=()=>mb<1||performance.now()-t0<ms;
+ for(const[dx,dz]of ORDER){if(!meshOk()&&!genOk())break;const cx=pcx+dx,cz=pcz+dz;let c=cols.get(colKey(cx,cz));
+  if(!c){if(!genOk())continue;c=genCol(cx,cz);g++}
+  if(c.shown||!meshOk())continue;let ok=true;
+  for(let ax=-1;ax<=1;ax++)for(let az=-1;az<=1;az++)if(!cols.has(colKey(cx+ax,cz+az))){if(genOk()){genCol(cx+ax,cz+az);g++}else ok=false}
   if(!ok)continue;for(let cy=0;cy<H/CS;cy++)buildChunk(cx,cy,cz);c.shown=true;mb++;
   if(c.leaf){c.leaf=false;checkLeavesInCol(c)}}
  unloadT+=dt;if(unloadT>1){unloadT=0;for(const c of cols.values())if(c.shown&&(Math.abs(c.cx-pcx)>RD+2||Math.abs(c.cz-pcz)>RD+2))hideCol(c)}}
@@ -661,7 +668,7 @@ function newWorld(s,data){clearAll();seed=s;computeSpawn();inv={};tier=0;gadgets
   inv=data.inv||{};tier=data.tier||0;gadgets=data.gadgets||{radar:false};stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
   for(const m of data.machines)if(fits(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m);
   for(const b of data.belts)if(fits('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
- stream(0,80,30);dirty.clear();renderHotbar();renderGoal()}
+ stream(0,250);dirty.clear();renderHotbar();renderGoal()}
 
 // ---------- Szene-Helfer ----------
 // ---------- Partikel (Rauch, Dampf, Staub, Funken) ----------
@@ -769,7 +776,7 @@ function frame(now){
  updateParts(dt);
  gameTime+=dt;updateDecay();
  let n=0;for(const k of dirty){dirty.delete(k);const cy=k%4,ck=(k-cy)/4,cx=Math.floor(ck/131072)-65536,cz=ck%131072-65536;buildChunk(cx,cy,cz);if(++n>=8)break}
- stream(dt,1,1);
+ stream(dt,6);
  // Ziel & Abbau
  const h=locked&&!buildType?raycast(6):null;let info='';
  if(h){let tgt=null,nm='',sub='';
@@ -929,6 +936,10 @@ $('joincode').addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Ent
 setInterval(()=>{if(!document.hidden||net.role==='solo')return;
  for(let i=0;i<10;i++){if(slopesDirty)updateSlopes();for(const m of machines)tickMachine(m,.1);updateBelts(.1)}
  gameTime+=1;updateDecay();netTick(1)},1000);
+// Einstellungen im Pause-Menü
+function renderSettings(){$('rdopts').innerHTML=RD_OPTS.map(n=>`<button class="rec ${n===RD?'on':''}" data-rd="${n}">${n} Chunks <span class="mut">(${n*16} m)</span></button>`).join('')}
+$('rdopts').addEventListener('click',e=>{const b=e.target.closest('[data-rd]');if(!b)return;setViewDist(+b.dataset.rd);renderSettings();toast('Sichtweite: '+RD+' Chunks')});
+renderSettings();
 function saveName(){try{localStorage.setItem('satiscraft-name',myName())}catch(e){}}
 try{$('pname').value=(localStorage.getItem('satiscraft-name')||'').slice(0,16)}catch(e){}
 

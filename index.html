@@ -63,6 +63,7 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 button.b{background:var(--acc);color:#1a1206;border:0;border-radius:4px;padding:8px 14px;font:700 14px "Chakra Petch",sans-serif;cursor:pointer;min-height:36px}
 button.b.sec{background:#353b44;color:var(--ink)}
 button.b.ok{background:var(--ok);color:#06210b}button.b.err{background:var(--bad);color:#fff}
+#settings{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}#settings h3{margin-top:0}
 #coop{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}#coop h3{margin-top:0}
 .crow{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .crow input{font:16px "Chakra Petch",sans-serif;background:#262b32;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-height:40px;width:170px}
@@ -129,6 +130,9 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
   </div>
   <div class="btns"><button class="b" id="play">Spielen</button><button class="b sec" id="saveb">Speichern</button><button class="b sec" id="newb">Neue Welt</button></div>
   <p id="savestate" role="status" aria-live="polite"></p>
+  <div id="settings"><h3>Einstellungen</h3>
+   <div class="crow"><span class="mut">Sichtweite</span><div class="recs" id="rdopts" role="group" aria-label="Sichtweite in Chunks"></div></div>
+   <p class="mut" style="font-size:13px;margin:6px 0 0">Mehr Sichtweite braucht mehr Grafikleistung. Neue Gebiete werden nach und nach geladen.</p></div>
   <div id="coop"><h3>Koop – bis zu 4 Spieler</h3>
    <div class="crow"><label for="pname" class="mut">Name</label><input id="pname" maxlength="16" placeholder="Spieler" autocomplete="nickname">
     <button class="b" id="hostb">Spiel hosten</button>
@@ -141,6 +145,6 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=32"></script>
+<script src="game.js?v=33"></script>
 </body>
 </html>

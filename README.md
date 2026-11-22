@@ -41,6 +41,10 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Meilensteine:** Oben links steht jeweils der nächste Schritt.
 - **Speichern:** Der Spielstand wird im `localStorage` des Browsers gespeichert.
 
+## Einstellungen
+
+Im Pause-Menü (Esc) stellst du die Sichtweite ein: 4, 6, 8, 10, 12 oder 16 Chunks (64–256 m). Mehr Sichtweite braucht mehr Grafikleistung. Neue Gebiete werden mit einem festen Zeitbudget pro Frame geladen.
+
 ## Koop (bis zu 4 Spieler)
 
 1. Ein Spieler öffnet das Spiel auf `https://frozenenenen.github.io/Satiscraft/` und klickt im Pause-Menü (Esc) auf **Spiel hosten**. Er bekommt einen 5-stelligen Raumcode.
