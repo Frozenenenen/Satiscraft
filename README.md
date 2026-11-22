@@ -73,7 +73,9 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
   - Der Mörser schießt Granaten mit Flächenschaden, der Teslaturm trifft per Kettenblitz bis zu 4 Gegner.
   - Auf und über dem Pfad kann nicht gebaut werden.
 - **Basis:** Der Turm hat 1000 Lebenspunkte und regeneriert sich tagsüber. Fällt er, verschwinden die Gegner, und er steht mit halber Kraft wieder. 
-- **Beute:** Besiegte Gegner lassen Items fallen. Läufer lassen Stein, Kohle und Erz fallen, Brocken Barren, Stahl und Platten, Flitzer Draht, Schrauben, Stangen und Gold. Ab Welle 6 gibt es auch seltene Beute. Je höher die Welle, desto mehr. Drüberlaufen sammelt ein, nach 5 min verschwinden die Items.
+- **Beute:** Gegner lassen Materialien fallen, die es nur bei ihnen gibt: Portalsplitter (alle), Panzerschuppen (Brocken), Flinkessenz (Flitzer). Ab Welle 4 gibt es selten einen Leerenkern. Je höher die Welle, desto mehr Beute.
+- **Sammler:** Ein schwebender Helfer-Roboter am Basisturm sammelt die Beute automatisch ein und liefert sie ins Inventar. Du kannst sie auch selbst durch Drüberlaufen einsammeln.
+- **Turm-Verbesserungen (E am Turm):** Panzerung I–III (bis 3000 Lebenspunkte), Verstärkte Geschosse I–III (bis +100 % Schaden aller Türme) und Reparieren (+50 %). Auch Sprintstiefel, Blaster und Jetpack brauchen Gegner-Materialien.
 - **Häufigkeit:** Wie oft Angriffe kommen (Aus, 1, 2, 3, 5 oder 7 Tage), stellst du am Basisturm (E) ein.
 - **Ältere Spielstände:** Im Pause-Menü kannst du für sie die Turmverteidigung nachträglich einrichten.
 

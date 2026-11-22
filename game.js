@@ -11,7 +11,8 @@ const ITEMS={wood:['Holz','#9b6b3d'],dirt:['Erde','#7a5535'],stone:['Stein','#8d
  quartz:['Quarzkristall','#f4efff'],alu_bar:['Aluminiumbarren','#dfe4ea'],alu_sheet:['Alublech','#cfd8e2'],copper_sheet:['Kupferblech','#d9874f'],silicon:['Silizium','#5d6b8a'],frame:['Rahmen','#8a939c'],chip:['Mikrochip','#2f8f6a'],ammo:['Munition','#b08d3c'],
  screw:['Schrauben','#9aa3ab'],gear:['Zahnrad','#7d8790'],cable:['Kabel','#2f3a44'],rplate:['Verstärkte Platte','#7f8a94'],rotor:['Rotor','#5f7d95'],battery:['Batterie','#3fbf6a'],
  coke:['Koks','#4a4a52'],titan_plate:['Titanplatte','#8fe0e6'],alloy:['Titanlegierung','#b9f2ee'],lens:['Linse','#dff6ff'],shell:['Granate','#7a6a3a'],
- computer:['Computer','#2d5f8f'],hframe:['Schwerer Rahmen','#56606a'],turbo:['Turbomotor','#d9483b']};
+ computer:['Computer','#2d5f8f'],hframe:['Schwerer Rahmen','#56606a'],turbo:['Turbomotor','#d9483b'],
+ shard:['Portalsplitter','#b06bff'],carapace:['Panzerschuppe','#7a3f9a'],essence:['Flinkessenz','#ffd84a'],core:['Leerenkern','#3a1a5e']};
 const BL=[null,
  {n:'Gras',t:[0,1,2],tier:0,time:.5,drop:'dirt'},
  {n:'Erde',t:[2,2,2],tier:0,time:.45,drop:'dirt'},
@@ -42,12 +43,12 @@ const NBL=BL.length-1;const isLog=id=>id===5||id===17,isLeaf=id=>id===6||id===16
 const TOOLS=[{n:'Hand',s:1},{n:'Holzspitzhacke',s:1.7},{n:'Steinspitzhacke',s:2.4},{n:'Eisenspitzhacke',s:3.3},{n:'Stahlspitzhacke',s:4.6},{n:'Titanspitzhacke',s:6.5}];
 const TOOLREC=[null,{wood:5},{stone:8,wood:2},{iron_bar:6,wood:2},{steel:6,rod:3},{alloy:6,rplate:2}];
 const GADGETS={radar:{n:'Erzradar',cost:{copper_bar:4,iron_bar:2},desc:'Zeigt Richtung und Entfernung zum nächsten Erz der gewählten Art (Taste F).'},
- boots:{n:'Sprintstiefel',cost:{alu_sheet:4,motor:1,planks:4},desc:'35 % schneller laufen.'},
+ boots:{n:'Sprintstiefel',cost:{alu_sheet:4,motor:1,essence:3},desc:'35 % schneller laufen.'},
  spring:{n:'Sprungfedern',cost:{steel:4,rod:6,screw:12},desc:'Springt gut 2 Blöcke hoch.'},
  nv:{n:'Nachtsicht',cost:{lens:2,battery:1,circuit:1},desc:'Hellt die Nacht auf (Taste N an/aus).'},
  belt2:{n:'Förderband Mk2',cost:{steel:10,motor:2,rplate:2},desc:'Alle Förderbänder laufen schneller (1,6 → 2,6 Felder/s).'},
- blaster:{n:'Blaster',cost:{lens:2,battery:2,chip:1,steel:4},desc:'Handwaffe gegen Angreifer: Taste G schießt auf den anvisierten Gegner.'},
- jetpack:{n:'Jetpack',cost:{turbo:1,battery:4,alu_sheet:8},req:'spring',desc:'Leertaste in der Luft halten zum Fliegen.'},
+ blaster:{n:'Blaster',cost:{lens:2,battery:2,chip:1,shard:6},desc:'Handwaffe gegen Angreifer: Taste G schießt auf den anvisierten Gegner.'},
+ jetpack:{n:'Jetpack',cost:{turbo:1,battery:4,essence:8,core:1},req:'spring',desc:'Leertaste in der Luft halten zum Fliegen.'},
  belt3:{n:'Förderband Mk3',cost:{alloy:10,turbo:2,computer:1},req:'belt2',desc:'Förderbänder noch schneller (→ 3,8 Felder/s).'}};
 const updateBeltSpeed=()=>{BS=gadgets.belt3?3.8:gadgets.belt2?2.6:1.6};
 const cleanGadgets=g=>Object.fromEntries(Object.keys(GADGETS).map(k=>[k,!!(g&&typeof g==='object'&&g[k]===true)]));
@@ -631,7 +632,9 @@ function renderPanel(){
   else if(def.beacon){h+=`<p class="mut">Wegpunkt im Kompass. Gib der Barke einen Namen, um sie von anderen zu unterscheiden.</p>
    <div class="crow"><input id="bname" maxlength="24" value="${esc(m.name)}" aria-label="Name der Barke" autocomplete="off"><button class="b" data-act="rename">Umbenennen</button></div>
    <p class="mut">Position: ${m.x}, ${m.y}, ${m.z}</p>`}
-  else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>${td.path?(waveActive()?`<p><b>Welle ${td.wave} läuft</b> – noch ${enemies.length+spawnQ.length} Gegner.</p>`:`<div class="btns"><button class="b danger" data-act="wave">Welle ${td.wave+1} jetzt starten</button></div><p class="mut">Startet sofort. Der normale Zeitplan läuft weiter, die Welle danach wird stärker.</p>`)+`<h3>Angriffe alle</h3><div class="recs">${WAVE_OPTS.map(n=>`<button class="rec ${n===td.every?'on':''}" data-act="every:${n}">${n?n+(n>1?' Tage':' Tag'):'Aus'}</button>`).join('')}</div><p class="mut">${esc(nextAttackText())}. Seltener = entspannter, häufiger = mehr Beute.</p>`:''}`}
+  else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${towerMax()} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p><p><b>Sammler:</b> ${esc(npc.msg||'wartet am Turm')} <span class="mut">– sammelt Beute der Gegner ein und liefert sie hier ab.</span></p>
+  <h3>Verbesserungen <span class="mut">(nur aus Gegner-Materialien)</span></h3>${Object.entries(UPG).map(([k,u])=>{const l=td[k]||0,c=u.cost[l];return`<div class="row"><div><b>${u.n} ${['–','I','II','III'][l]}</b> <span class="mut">${u.eff(l)}</span>${c?`<br><span class="mut">Stufe ${['I','II','III'][l]}: ${u.eff(l+1)}</span>`+costHtml(c):''}</div><button class="b" data-act="upg:${k}" ${!c||!has(c)?'disabled':''}>${c?'Verbessern':'Maximal'}</button></div>`}).join('')}
+  <div class="row"><div><b>Reparieren</b> <span class="mut">+50 % Lebenspunkte</span>${costHtml(REPAIR)}</div><button class="b" data-act="repair" ${td.hp>=towerMax()||!has(REPAIR)?'disabled':''}>Reparieren</button></div>${td.path?(waveActive()?`<p><b>Welle ${td.wave} läuft</b> – noch ${enemies.length+spawnQ.length} Gegner.</p>`:`<div class="btns"><button class="b danger" data-act="wave">Welle ${td.wave+1} jetzt starten</button></div><p class="mut">Startet sofort. Der normale Zeitplan läuft weiter, die Welle danach wird stärker.</p>`)+`<h3>Angriffe alle</h3><div class="recs">${WAVE_OPTS.map(n=>`<button class="rec ${n===td.every?'on':''}" data-act="every:${n}">${n?n+(n>1?' Tage':' Tag'):'Aus'}</button>`).join('')}</div><p class="mut">${esc(nextAttackText())}. Seltener = entspannter, häufiger = mehr Beute.</p>`:''}`}
   else if(m.type==='sorter'){const f=Array.isArray(m.filter)?m.filter:[];h+=`<p>Gewählte Items laufen <b>nach vorne</b>, alle anderen abwechselnd zu den <b>Seiten</b>. Ohne Auswahl geht alles zur Seite.</p><p class="mut">Status: ${esc(m.status||'')}</p><h3>Nach vorne (${f.length})</h3><div class="recs"><button class="rec ${f.length?'':'on'}" data-act="filter:off">Nichts</button>${Object.keys(ITEMS).map(k=>`<button class="rec ${f.includes(k)?'on':''}" data-act="filter:${k}">${ITEMS[k][0]}</button>`).join('')}</div>`}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>
    <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3>${m.outs.length>1?'<p class="mut">Links/rechts gesehen, wenn du vor den orangen Pfeilen stehst und auf das Lager schaust. „Alles“ gibt alles aus, was kein anderer Ausgang ausgibt.</p>':''}<p class="mut">Mehrere Items pro Ausgang wählbar (nochmal klicken = abwählen), sie kommen abwechselnd heraus.</p>
@@ -660,9 +663,11 @@ $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
  if(m&&PANEL_ACTS.includes(act)){if(net.role==='client')netSend({t:'act',a:'panel',k:m.cells[0],act,arg});else panelAct(m,act,arg)}
  renderPanel();renderHotbar()});
-const PANEL_ACTS=['every','filter','wave','rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
+const PANEL_ACTS=['upg','repair','every','filter','wave','rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
 function panelAct(m,act,arg){
  if(act==='filter'){if(m.type!=='sorter'||typeof arg!=='string')return;if(arg==='off'){m.filter=null;return}if(!own(ITEMS,arg))return;const c=Array.isArray(m.filter)?m.filter:[];const l=c.includes(arg)?c.filter(x=>x!==arg):[...c,arg].slice(0,12);m.filter=l.length?l:null;return}
+ if(act==='upg'){const u=UPG[arg];if(!BUILD[m.type].fixed||!u||!own(UPG,arg))return;const l=td[arg]||0,c=u.cost[l];if(!c||!has(c))return;for(const k in c)add(k,-c[k]);td[arg]=l+1;if(arg==='armor')td.hp+=TOWER_HP*(ARMOR_MUL[l+1]-ARMOR_MUL[l]);m.pulse=1;toast(u.n+' '+['I','II','III'][l]+' – '+u.eff(l+1));return}
+ if(act==='repair'){if(!BUILD[m.type].fixed||td.hp>=towerMax()||!has(REPAIR))return;for(const k in REPAIR)add(k,-REPAIR[k]);td.hp=Math.min(towerMax(),td.hp+towerMax()/2);toast('Basis repariert');return}
  if(act==='every'){const n=+arg;if(BUILD[m.type].fixed&&WAVE_OPTS.includes(n)){td.every=n;try{localStorage.setItem('satiscraft-every',String(n))}catch(e){}toast(n?'Angriffe alle '+n+(n>1?' Tage':' Tag'):'Angriffe ausgeschaltet')}return}
  if(act==='wave'){if(BUILD[m.type].fixed&&td.path&&!waveActive())startWave();return}
  if(act==='craft'){const t=+arg;if(m.type==='workbench'&&TOOLREC[t]&&has(TOOLREC[t])&&tier===t-1){for(const k in TOOLREC[t])add(k,-TOOLREC[t][k]);tier=t;m.pulse=1.4;toast(TOOLS[t].n+' hergestellt')}}
@@ -745,7 +750,7 @@ function dragBelt(){const k=place.ox+','+place.oy+','+place.oz;if(k===lastBelt||
  lastBelt=k;const pos={x:place.ox,y:place.oy,z:place.oz};tryPlace(dir??undefined);lastBeltPos=pos}
 
 // ---------- Speichern / Laden ----------
-function snapshot(){return{v:2,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,defeats:td.defeats,kills:td.kills,path:td.path,
+function snapshot(){return{v:2,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,defeats:td.defeats,kills:td.kills,path:td.path,armor:td.armor||0,dmg:td.dmg||0,
   en:enemies.map(e=>[e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)]),q:spawnQ.map(q=>q.ty)},seed,dv:1,changes:[...changes],res:[...reserves],inv,tier,gadgets,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
  machines:machines.map(m=>{const o={...m.outBuf};for(const it of m.tr)o[it.item]=(o[it.item]||0)+1;return{t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o,rc:m.recipe,ds:m.disp&&m.disp.some(Boolean)?m.disp:undefined,fl:m.filter||undefined,nm:m.name||undefined}}),
  belts:[...belts.values()].map(b=>[b.x,b.y,b.z,b.dir,b.items.map(i=>i.item)])}}
@@ -761,7 +766,7 @@ const isInt=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b;
 const isNum=(v,a,b)=>typeof v==='number'&&isFinite(v)&&v>=a&&v<=b;
 const arr=v=>Array.isArray(v)?v:[];
 function cleanTd(t){if(!t||typeof t!=='object')return null;const o={day:isInt(t.day,1,1e7)?t.day:1,t:isNum(t.t,0,.9999)?t.t:.08,wave:isInt(t.wave,0,1e6)?t.wave:0,
- hp:isNum(t.hp,0,TOWER_HP)?t.hp:TOWER_HP,every:WAVE_OPTS.includes(t.every)?t.every:2,defeats:isInt(t.defeats,0,1e7)?t.defeats:0,kills:isInt(t.kills,0,1e9)?t.kills:0,path:null,en:[],q:[]};
+ hp:isNum(t.hp,0,TOWER_HP*3)?t.hp:TOWER_HP,armor:isInt(t.armor,0,3)?t.armor:0,dmg:isInt(t.dmg,0,3)?t.dmg:0,every:WAVE_OPTS.includes(t.every)?t.every:2,defeats:isInt(t.defeats,0,1e7)?t.defeats:0,kills:isInt(t.kills,0,1e9)?t.kills:0,path:null,en:[],q:[]};
  const p=arr(t.path);if(p.length>=2&&p.length<=400&&p.every(q=>Array.isArray(q)&&isXZ(q[0])&&isInt(q[1],1,H-2)&&isXZ(q[2]))&&p.every((q,i)=>!i||Math.abs(q[0]-p[i-1][0])+Math.abs(q[2]-p[i-1][2])===1))o.path=p.map(q=>[q[0],q[1],q[2]]);
  for(const e of arr(t.en).slice(0,200))if(Array.isArray(e)&&own(ETYPES,e[0])&&isNum(e[1],0,400)&&isNum(e[2],1,1e7)&&isNum(e[3],1,1e7))o.en.push([e[0],e[1],Math.min(e[2],e[3]),e[3]]);
  for(const q of arr(t.q).slice(0,100))if(typeof q==='string'&&own(ETYPES,q))o.q.push(q);return o}
@@ -791,11 +796,11 @@ function clearFor(type,ox,oy,oz,rot){const cells=type==='belt'?[{x:ox,y:oy,z:oz}
  for(const c of cells)if(get(c.x,c.y,c.z))setBlock(c.x,c.y,c.z,0,true);return true}
 function fits(type,ox,oy,oz,rot){if(type==='belt')return isXZ(ox)&&isXZ(oz)&&oy>=1&&oy<H&&!get(ox,oy,oz);
  return cellsOf(BUILD[type],ox,oy,oz,rot).every(c=>isXZ(c.x)&&isXZ(c.z)&&c.y>=1&&c.y<H&&!get(c.x,c.y,c.z))}
-function clearAll(){decay.clear();for(const id of[...drops.keys()])removeDrop(id);pathAirCols.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
+function clearAll(){decay.clear();if(npc.g){scene.remove(npc.g);npc.g=null}npc.carry={};for(const id of[...drops.keys()])removeDrop(id);pathAirCols.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
  for(const c of cols.values())hideCol(c);cols.clear();changesByCol.clear();featCache.clear();reserves.clear();dirty.clear();buildType=null}
 function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:0,hp:TOWER_HP,every:prefEvery(),defeats:0,kills:0,path:null};inv={};tier=0;gadgets={radar:false};stats={delivered:0,produced:{}};goal=0;
  P.x=64.5;P.z=64.5;P.y=surfaceH(64,64)+1;P.vy=0;P.yaw=0;P.pitch=-.15;
- if(data){if(data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path});buildPathIndex()}
+ if(data){if(data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path,armor:t.armor||0,dmg:t.dmg||0});buildPathIndex()}
   for(const[i,id]of data.changes)recordChange(i,id);for(const[i,r]of data.res)reserves.set(i,r);
   inv=data.inv||{};tier=data.tier||0;gadgets=cleanGadgets(data.gadgets);stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
   for(const m of data.machines){if(!data.dv&&BUILD[m.t]&&BUILD[m.t].store&&(!m.ds||(Array.isArray(m.ds)&&m.ds.every(v=>!v))))m.ds='all';if(clearFor(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m)}
@@ -844,6 +849,12 @@ function drawItems(){let n=0;for(const b of belts.values()){const[dx,dz]=DIRS[b.
 // ---------- Tag/Nacht und Turmverteidigung ----------
 // Ein Tag = 12 min (t 0..1, 0 = 6:00, Nacht ab t=0.65 = 19:00). Angriffe zur Nacht alle td.every Tage über den festen Pfad.
 const DAYLEN=720,NIGHT=.65,TOWER_HP=1000,WAVE_OPTS=[0,1,2,3,5,7];
+// Turm-Verbesserungen aus Gegner-Materialien
+const ARMOR_MUL=[1,1.5,2,3],DMG_MUL=[1,1.25,1.5,2];
+const UPG={armor:{n:'Panzerung',eff:l=>'max. '+TOWER_HP*ARMOR_MUL[l]+' LP',cost:[{carapace:6,shard:10,rplate:4},{carapace:15,shard:25,steel:10},{carapace:30,core:3,hframe:2}]},
+ dmg:{n:'Verstärkte Geschosse',eff:l=>'+'+Math.round((DMG_MUL[l]-1)*100)+' % Turmschaden',cost:[{essence:6,shard:10},{essence:15,shard:25,circuit:4},{essence:30,core:3,computer:1}]}};
+const REPAIR={shard:8};
+const towerMax=()=>TOWER_HP*ARMOR_MUL[td.armor||0],dmgMul=()=>DMG_MUL[td.dmg||0];
 const pathAirCols=new Map();let td={day:1,t:.08,wave:0,hp:TOWER_HP,every:2,defeats:0,kills:0,path:null},route=[],pathSet=new Set(),enemies=[],spawnQ=[],shots=[],enemyId=1,portal=null,waveT=0;
 const ETYPES={walker:{n:'Läufer',hp:30,sp:2.2,dps:6,col:0xc0392b,sc:1},brute:{n:'Brocken',hp:140,sp:1.2,dps:18,col:0x6c3483,sc:1.45},runner:{n:'Flitzer',hp:18,sp:4.2,dps:3,col:0xe6b800,sc:.75}};
 const hpMul=n=>1+.3*(n-1)+.02*(n-1)**2;
@@ -895,17 +906,41 @@ function enemyModel(ty){const E=ETYPES[ty],g=new THREE.Group(),b=new THREE.Group
  const fg=new THREE.Mesh(BOX,M(0x5fcf6f,1));fg.scale.set(.88,.07,.03);fg.position.z=.01;bar.add(fg);g.add(bar);scene.add(g);return{g,b,l1,l2,bar,fg}}
 function spawnEnemy(ty,hp,id,s){const e={id:id||enemyId++,ty,s:s||0,hp,max:hp,ph:Math.random()*6,...enemyModel(ty)};enemies.push(e);return e}
 // ---------- Beute: Gegner lassen Items fallen, Einsammeln durch Darüberlaufen ----------
-const LOOT={walker:[[2,['stone','coal','iron_ore','copper_ore']]],brute:[[3,['iron_bar','copper_bar','steel','coal','iron_plate']]],runner:[[2,['wire','screw','gold_ore','rod']]]};
-const LATE=['quartz_ore','bauxite','titan_ore','circuit','alu_bar'];
+// Gegner lassen nur Materialien fallen, die es sonst nirgends gibt
+const LOOT={walker:[['shard',.85,1]],brute:[['carapace',.9,1],['shard',.6,1]],runner:[['essence',.85,1],['shard',.3,1]]};
 const drops=new Map();let dropId=1;const dropMats={};
 function dropMesh(d){const c=ITEMS[d.item][1];const mat=dropMats[c]||(dropMats[c]=new THREE.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.25}));
  const me=new THREE.Mesh(BOX,mat);me.scale.setScalar(.28+Math.min(.12,d.n*.02));me.position.set(d.x,d.y+.3,d.z);scene.add(me);d.g=me;return d}
 function spawnDrop(item,n,x,y,z,id){if(drops.size>=150){const old=drops.values().next().value;removeDrop(old.id)}
- const d=dropMesh({id:id||dropId++,item,n,x:x+(Math.random()-.5)*1.2,y,z:z+(Math.random()-.5)*1.2,life:300,ph:Math.random()*6});drops.set(d.id,d);return d}
+ const d=dropMesh({id:id||dropId++,item,n,x:x+(Math.random()-.5)*1.2,y,z:z+(Math.random()-.5)*1.2,life:600,ph:Math.random()*6});drops.set(d.id,d);return d}
 function removeDrop(id){const d=drops.get(id);if(!d)return;scene.remove(d.g);drops.delete(id)}
 function dropLoot(e){if(net.role==='client')return;const w=td.wave||1;
- for(const[rolls,pool]of LOOT[e.ty]||LOOT.walker){for(let i=0;i<rolls;i++)if(Math.random()<.8)spawnDrop(pool[Math.floor(Math.random()*pool.length)],1+Math.floor(Math.random()*(1+w/4)),e.pos.x,e.pos.y,e.pos.z)}
- if(w>=6&&Math.random()<Math.min(.6,.1+w*.03))spawnDrop(LATE[Math.floor(Math.random()*LATE.length)],1+Math.floor(Math.random()*2),e.pos.x,e.pos.y,e.pos.z)}
+ for(const[it,p,n]of LOOT[e.ty]||LOOT.walker)if(Math.random()<p)spawnDrop(it,n+Math.floor(Math.random()*(1+w/5)),e.pos.x,e.pos.y,e.pos.z);
+ if(w>=4&&Math.random()<Math.min(.25,(e.ty==='brute'?.04:.015)+w*.004))spawnDrop('core',1,e.pos.x,e.pos.y,e.pos.z)}
+// Sammler: schwebender Helfer-Roboter am Basisturm, sammelt Beute ein und liefert sie am Turm ab
+const npc={x:0,y:0,z:0,yaw:0,carry:{},g:null,tx:0,ty:0,tz:0,on:false,msg:''};
+function npcModel(){const g=new THREE.Group();bx(g,M(0xe8892b),.6,.5,.5,0,0,0);bx(g,M(0x33373c),.5,.3,.42,0,.5,0);
+ bx(g,new THREE.MeshLambertMaterial({color:0x4fe3ff,emissive:0x4fe3ff,emissiveIntensity:.9}),.36,.1,.05,0,.6,.22);bx(g,M(0x55595e),.05,.3,.05,.15,.8,0);
+ bx(g,new THREE.MeshLambertMaterial({color:0xffd24a,emissive:0xffd24a,emissiveIntensity:.8}),.1,.1,.1,.15,1.1,0);for(const sx of[-.38,.38])bx(g,M(0x55595e),.12,.12,.4,sx,.1,0);
+ const box=bx(g,M(0x8b5a2b),.35,.25,.3,0,-.3,0);box.visible=false;g.userData.box=box;scene.add(g);return g}
+function groundY(x,z){const X=Math.floor(x),Z=Math.floor(z);for(let y=H-1;y>0;y--){const v=get(X,y,Z);if(solidId(v)||v===MACH||v===BELT)return y+1}return 1}
+const npcHome=tw=>({x:tw.x+1.5,z:tw.z+3.6});
+const carryN=()=>Object.values(npc.carry).reduce((a,b)=>a+b,0);
+function updateNpc(dt){const tw=machines.find(m=>m.type==='tower');if(!tw){if(npc.g){scene.remove(npc.g);npc.g=null}npc.on=false;return}
+ if(!npc.g){npc.g=npcModel();const h=npcHome(tw);Object.assign(npc,{x:h.x,z:h.z,y:groundY(h.x,h.z)+.6});npc.tx=npc.x;npc.tz=npc.z;npc.ty=npc.y}npc.on=true;
+ if(net.role!=='client'){const h=npcHome(tw);let goal=null;
+  if(carryN()<40&&drops.size){let bd=1e9;for(const d of drops.values()){const dd=Math.hypot(d.x-npc.x,d.z-npc.z);if(dd<bd){bd=dd;goal=d}}}
+  const tx=goal?goal.x:h.x,tz=goal?goal.z:h.z,dx=tx-npc.x,dz=tz-npc.z,dist=Math.hypot(dx,dz),sp=5.5*dt;
+  if(dist>.05){const k=Math.min(1,sp/dist);npc.x+=dx*k;npc.z+=dz*k;npc.yaw=Math.atan2(dx,dz)}
+  npc.y+=(groundY(npc.x,npc.z)+.6-npc.y)*Math.min(1,dt*6);
+  if(goal&&dist<.8){npc.carry[goal.item]=(npc.carry[goal.item]||0)+goal.n;removeDrop(goal.id)}
+  else if(!goal&&dist<1.2&&carryN()){const l=Object.entries(npc.carry);for(const[k,n]of l)add(k,n);npc.carry={};renderHotbar();net.syncT=1;
+   toast('Sammler liefert ab: '+l.map(([k,n])=>'+'+n+' '+ITEMS[k][0]).join(', '))}
+  npc.msg=goal?'sammelt Beute ein':carryN()?'bringt '+carryN()+' Items zum Turm':'wartet am Turm'}
+ else{npc.x+=(npc.tx-npc.x)*Math.min(1,dt*5);npc.z+=(npc.tz-npc.z)*Math.min(1,dt*5);npc.y+=(npc.ty-npc.y)*Math.min(1,dt*5)}
+ npc.g.position.set(npc.x,npc.y+Math.sin(time*4)*.06,npc.z);npc.g.rotation.y=npc.yaw;npc.g.userData.box.visible=carryN()>0||npc.cv}
+const npcState=()=>npc.on?[+npc.x.toFixed(2),+npc.y.toFixed(2),+npc.z.toFixed(2),+npc.yaw.toFixed(2),carryN()]:0;
+function applyNpc(a){if(!a.slice(0,4).every(v=>isNum(v,-LIM,LIM)))return;npc.tx=a[0];npc.ty=a[1];npc.tz=a[2];npc.yaw=a[3];npc.cv=a[4]>0;npc.msg=a[4]>0?'bringt '+a[4]+' Items zum Turm':'unterwegs'}
 let pickMsg={},pickT=0;
 function updateDrops(dt){for(const d of drops.values()){d.g.rotation.y+=dt*2;d.g.position.y=d.y+.3+Math.sin(time*3+d.ph)*.08;
   if(net.role==='client')continue;d.life-=dt;if(d.life<=0){removeDrop(d.id);continue}
@@ -928,15 +963,15 @@ function updateWaveTimer(dt){const el=$('wavetimer');let html='',cls='';
  const key=cls+html;if(key!==wtLast){wtLast=key;el.innerHTML=html;el.className=cls}}
 const waveActive=()=>enemies.length>0||spawnQ.length>0;
 function startWave(){waveAlarm=4;td.wave++;spawnQ=waveList(td.wave).map((ty,i)=>({ty,t:i*1.6}));waveT=0;toast('Angriff! Welle '+td.wave+' – '+spawnQ.length+' Gegner')}
-function baseFallen(){for(const e of[...enemies])removeEnemy(e,true);spawnQ=[];td.hp=TOWER_HP/2;td.defeats++;toast('Die Basis ist gefallen! Der Turm steht wieder mit halber Kraft.')}
+function baseFallen(){for(const e of[...enemies])removeEnemy(e,true);spawnQ=[];td.hp=towerMax()/2;td.defeats++;toast('Die Basis ist gefallen! Der Turm steht wieder mit halber Kraft.')}
 function damageEnemy(e,d){e.hp-=d;if(e.pos)emit(new THREE.Vector3(e.pos.x,e.pos.y+.8,e.pos.z),'spark');
  if(e.hp<=0){if(e.pos)dropLoot(e);removeEnemy(e,true);td.kills++}}
 const shotMat={tesla:new THREE.MeshBasicMaterial({color:0x8fe3ff,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}),shell:new THREE.MeshLambertMaterial({color:0x3a3d33}),blaster:new THREE.MeshBasicMaterial({color:0x6bffb0,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}),bolt:new THREE.MeshLambertMaterial({color:0x8a5a2b}),bullet:new THREE.MeshBasicMaterial({color:0xffd24a}),laser:new THREE.MeshBasicMaterial({color:0xff3b6b,transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false})};
 function fire(m,e,T){const mz=m.a.muzzle||[0,1,0],from={x:m.x+m.rw/2,y:m.y+mz[1],z:m.z+m.rd/2},p=e.pos,dist=Math.hypot(p.x-from.x,p.y+.8-from.y,p.z-from.z);
  if(T.chain){let last=e;const hit=[e];while(hit.length<T.chain){let nb=null,bd=6;for(const q of enemies)if(q.pos&&!hit.includes(q)){const d=Math.hypot(q.pos.x-last.pos.x,q.pos.z-last.pos.z);if(d<bd){bd=d;nb=q}}if(!nb)break;hit.push(nb);last=nb}
-  let fr=from;for(const q of hit){const mesh=new THREE.Mesh(BOX,shotMat.tesla);scene.add(mesh);shots.push({id:q.id,from:fr,dmg:T.dmg,t:0,dur:.12,kind:'tesla',mesh});fr={x:q.pos.x,y:q.pos.y+.8,z:q.pos.z}}return}
+  let fr=from;for(const q of hit){const mesh=new THREE.Mesh(BOX,shotMat.tesla);scene.add(mesh);shots.push({id:q.id,from:fr,dmg:T.dmg*dmgMul(),t:0,dur:.12,kind:'tesla',mesh});fr={x:q.pos.x,y:q.pos.y+.8,z:q.pos.z}}return}
  const mesh=new THREE.Mesh(BOX,shotMat[T.kind]);if(T.kind==='bolt')mesh.scale.set(.07,.07,.6);else if(T.kind==='bullet')mesh.scale.set(.08,.08,.35);else if(T.kind==='shell')mesh.scale.set(.28,.28,.28);scene.add(mesh);
- shots.push({id:e.id,from,dmg:T.dmg,t:0,dur:T.kind==='laser'?.09:Math.max(.05,dist/T.spd),kind:T.kind,mesh,splash:T.splash||0,arc:T.kind==='shell'?Math.min(6,dist*.35):0})}
+ shots.push({id:e.id,from,dmg:T.dmg*dmgMul(),t:0,dur:T.kind==='laser'?.09:Math.max(.05,dist/T.spd),kind:T.kind,mesh,splash:T.splash||0,arc:T.kind==='shell'?Math.min(6,dist*.35):0})}
 const lookV=new THREE.Vector3();
 function updateShots(dt,client){for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.t+=dt;const e=enemies.find(q=>q.id===s.id);
  if(!e||!e.pos){scene.remove(s.mesh);shots.splice(i,1);continue}const tx=e.pos.x,ty=e.pos.y+.8*ETYPES[e.ty].sc,tz=e.pos.z,f=Math.min(1,s.t/s.dur);
@@ -973,14 +1008,14 @@ function tdUpdate(dt){const client=net.role==='client',wasN=isNight(td.t);td.t+=
  if(client&&nowN&&!wasN&&td.every>0&&td.day%td.every===0)waveAlarm=4;
  if(!client){if(nowN&&!wasN&&td.every>0&&td.day%td.every===0)startWave();
   if(spawnQ.length){waveT+=dt;while(spawnQ.length&&spawnQ[0].t<=waveT){const q=spawnQ.shift();spawnEnemy(q.ty,Math.round(ETYPES[q.ty].hp*hpMul(td.wave)))}}
-  if(!nowN&&!enemies.length)td.hp=Math.min(TOWER_HP,td.hp+dt*1.2)}
- updateEnemies(dt,client);updateTurrets(dt,client);updateShots(dt,client);updateDrops(dt);
+  if(!nowN&&!enemies.length)td.hp=Math.min(towerMax(),td.hp+dt*1.2)}
+ updateEnemies(dt,client);updateTurrets(dt,client);updateShots(dt,client);updateDrops(dt);updateNpc(dt);
  updateWaveTimer(dt);
  if(!client&&td.hp<=0)baseFallen()}
 function nextAttackText(){if(!td.path)return'';if(td.every<=0)return'Angriffe aus';if(enemies.length||spawnQ.length)return'Angriff läuft: '+(enemies.length+spawnQ.length)+' Gegner';
  let d=td.day;if(isNight(td.t)||d%td.every!==0){d=d+1;while(d%td.every!==0)d++}const n=d-td.day;return'Nächster Angriff: '+(n===0?'heute Nacht':n===1?'morgen Nacht':'in '+n+' Tagen')+' (Welle '+(td.wave+1)+')'}
 function updateTdHud(){const el=$('tdhud');const night=isNight(td.t);
- const hpP=Math.max(0,Math.round(td.hp/TOWER_HP*100));
+ const hpP=Math.max(0,Math.round(td.hp/towerMax()*100));
  el.innerHTML=`<span><b>Tag ${td.day}</b> · ${clockStr(td.t)} ${night?'· <span class="nt">Nacht</span>':''}</span>`+(td.path?`<span class="bh">Basis <i><u style="width:${hpP}%;background:${hpP>50?'#5fcf6f':hpP>25?'#f29a2e':'#ef5a4c'}"></u></i> ${hpP}%</span><span class="na">${nextAttackText()}</span>`:'')}
 
 // ---------- Kompass oben: Himmelsrichtungen + Marker für Basis und Barken ----------
@@ -1225,7 +1260,7 @@ function applyAction(d){const ok3=()=>isXZ(d.x)&&isInt(d.y,1,H-1)&&isXZ(d.z);
  else if(d.a==='bdir'){if(!isKey(d.i)||!isInt(d.d,0,3))return;const b=belts.get(d.i);if(b)setBeltDir(b,d.d)}
  else if(d.a==='panel'){if(!isKey(d.k)||!PANEL_ACTS.includes(d.act))return;const m=machineAt.get(d.k);if(m&&(typeof d.arg==='string'||d.arg===undefined))panelAct(m,d.act,d.arg)}
  renderHotbar()}
-function syncMsg(){return{t:'sync',dr:[...drops.values()].map(d=>[d.id,d.item,d.n,+d.x.toFixed(2),+d.y.toFixed(2),+d.z.toFixed(2)]),inv,tier,goal,gadgets,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,kills:td.kills,defeats:td.defeats,en:enemies.map(e=>[e.id,e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)])},
+function syncMsg(){return{t:'sync',dr:[...drops.values()].map(d=>[d.id,d.item,d.n,+d.x.toFixed(2),+d.y.toFixed(2),+d.z.toFixed(2)]),inv,tier,goal,gadgets,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,kills:td.kills,defeats:td.defeats,ar:td.armor||0,dm:td.dmg||0,np:npcState(),en:enemies.map(e=>[e.id,e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)])},
  m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1]),m.disp||0,m.name||0,m.ps||0,m.filter||0]),
  b:[...belts.entries()].map(([k,b])=>[k,b.items.map(i=>[i.item,+i.p.toFixed(2)])])}}
 // --- Mitspieler ---
@@ -1285,7 +1320,7 @@ function applySync(d){applyTdSync(d.td);applyDrops(d.dr);inv=cleanBag(d.inv,1e9)
  for(const r of arr(d.b)){if(!Array.isArray(r)||!isKey(r[0]))continue;const b=belts.get(r[0]);if(!b)continue;
   b.items=arr(r[1]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])&&isNum(x[1],0,1)).slice(0,4).map(x=>({item:x[0],p:x[1]}))}
  renderHotbar()}
-function applyTdSync(t){if(!t||typeof t!=='object')return;if(isInt(t.day,1,1e7))td.day=t.day;if(isNum(t.t,0,.9999))td.t=t.t;if(isInt(t.wave,0,1e6)){if(t.wave>td.wave&&td.wave>0||t.wave===td.wave+1)waveAlarm=4;td.wave=t.wave}if(isNum(t.hp,0,TOWER_HP))td.hp=t.hp;
+function applyTdSync(t){if(!t||typeof t!=='object')return;if(isInt(t.day,1,1e7))td.day=t.day;if(isNum(t.t,0,.9999))td.t=t.t;if(isInt(t.wave,0,1e6)){if(t.wave>td.wave&&td.wave>0||t.wave===td.wave+1)waveAlarm=4;td.wave=t.wave}if(isNum(t.hp,0,TOWER_HP*3))td.hp=t.hp;if(isInt(t.ar,0,3))td.armor=t.ar;if(isInt(t.dm,0,3))td.dmg=t.dm;if(Array.isArray(t.np))applyNpc(t.np);
  if(WAVE_OPTS.includes(t.every))td.every=t.every;if(isInt(t.kills,0,1e9))td.kills=t.kills;if(isInt(t.defeats,0,1e7))td.defeats=t.defeats;if(!td.path)return;
  const seen=new Set();for(const r of arr(t.en).slice(0,300)){if(!Array.isArray(r)||!isInt(r[0],1,1e9)||!own(ETYPES,r[1])||!isNum(r[2],0,400)||!isNum(r[3],0,1e7)||!isNum(r[4],1,1e7))continue;seen.add(r[0]);
   let e=enemies.find(q=>q.id===r[0]);if(!e)e=spawnEnemy(r[1],r[4],r[0],Math.min(r[2],route.length-1));if(Math.abs(e.s-r[2])>1.5)e.s=Math.min(r[2],route.length-1);e.hp=r[3];e.max=r[4]}
