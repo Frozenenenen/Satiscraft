@@ -263,7 +263,8 @@ function arrowTex(col,belt){const c=document.createElement('canvas');c.width=c.h
 
 // ---------- Three.js ----------
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);document.body.prepend(renderer.domElement);
+const RS_OPTS=[100,75,50];let RS=(()=>{try{const v=+localStorage.getItem('satiscraft-rs');return RS_OPTS.includes(v)?v:100}catch(e){return 100}})();
+const applyRS=()=>renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)*RS/100);applyRS();renderer.setSize(innerWidth,innerHeight);document.body.prepend(renderer.domElement);
 const canvas=renderer.domElement;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9fd4f5);scene.fog=new THREE.Fog(0x9fd4f5,45,115);
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.05,220);camera.rotation.order='YXZ';
@@ -348,7 +349,15 @@ function updateDecay(){if(net.role==='client')return;let n=0;for(const[k,t]of de
 
 // ---------- Modelle ----------
 const BOX=new THREE.BoxGeometry(1,1,1),CYL=new THREE.CylinderGeometry(.5,.5,1,10),CONE=new THREE.ConeGeometry(.5,1,8);
-const mats={};const M=(c,e)=>mats[c+'_'+(e||0)]||(mats[c+'_'+(e||0)]=new THREE.MeshLambertMaterial({color:c,emissive:e?c:0,emissiveIntensity:e?.9:0}));
+const mats={};const M=(c,e)=>mats[c+'_'+(e||0)]||(mats[c+'_'+(e||0)]=(()=>{const m=new THREE.MeshLambertMaterial({color:c,emissive:e?c:0,emissiveIntensity:e?.9:0});if(!e)m.userData.vc=new THREE.Color(c);return m})());
+const mergedMat=new THREE.MeshLambertMaterial({vertexColors:true});
+function mergeStatic(g,keep){const list=g.children.filter(o=>o.isMesh&&o.material&&o.material.userData&&o.material.userData.vc&&!keep.has(o));if(list.length<2)return;
+ const pos=[],nor=[],col=[],ind=[];let base=0;
+ for(const me of list){me.updateMatrix();const geo=me.geometry.clone();geo.applyMatrix4(me.matrix);const p=geo.attributes.position,n=geo.attributes.normal,c=me.material.userData.vc;
+  for(let i=0;i<p.count;i++){pos.push(p.getX(i),p.getY(i),p.getZ(i));nor.push(n.getX(i),n.getY(i),n.getZ(i));col.push(c.r,c.g,c.b)}
+  if(geo.index)for(let i=0;i<geo.index.count;i++)ind.push(geo.index.getX(i)+base);else for(let i=0;i<p.count;i++)ind.push(i+base);base+=p.count;geo.dispose();g.remove(me)}
+ const bg=new THREE.BufferGeometry();bg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));bg.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));
+ bg.setAttribute('color',new THREE.Float32BufferAttribute(col,3));bg.setIndex(ind);g.add(new THREE.Mesh(bg,mergedMat))}
 const ghostMat=new THREE.MeshBasicMaterial({color:0x5fcf6f,transparent:true,opacity:.42,depthWrite:false});
 const arrIn=new THREE.MeshBasicMaterial({map:arrowTex('#5fcf6f'),transparent:true,depthWrite:false});
 const arrOut=new THREE.MeshBasicMaterial({map:arrowTex('#f29a2e'),transparent:true,depthWrite:false});
@@ -360,7 +369,7 @@ function model(type,ghost){
  const GL=c=>ghost?ghostMat:new THREE.MeshLambertMaterial({color:c,emissive:c,emissiveIntensity:.2});
  if(type==='belt'){bx(g,C(0x3a3f45),.98,.1,1,0,0,0);bx(g,C(0x707780),.08,.16,1,-.46,0,0);bx(g,C(0x707780),.08,.16,1,.46,0,0);
   const t=new THREE.Mesh(BPLANE,ghost?ghostMat:beltTop);t.rotation.x=-Math.PI/2;t.position.y=.105;g.add(t);
-  if(ghost){const ar=new THREE.Mesh(PLANE,arrOut);ar.rotation.x=-Math.PI/2;ar.position.y=.2;g.add(ar)}return{g,a}}
+  if(ghost){const ar=new THREE.Mesh(PLANE,arrOut);ar.rotation.x=-Math.PI/2;ar.position.y=.2;g.add(ar)}else mergeStatic(g,new Set());return{g,a}}
  if(type==='workbench'){bx(g,C(0xa0703f),1.9,.16,1.9,0,.78,0);for(const sx of[-.8,.8])for(const sz of[-.8,.8])bx(g,C(0x6e4a28),.16,.78,.16,sx,0,sz);
   bx(g,C(0x5e656d),.55,.28,.32,.45,.94,-.45);bx(g,C(0x34383d),.5,.22,.3,-.4,.94,.35);bx(g,C(0xc9ced4),.7,.04,.12,.1,.94,.2);bx(g,C(0x6e4a28),1.7,.08,1.7,0,.25,0);
   const hm=new THREE.Group();hm.position.set(-.05,1.0,.35);bx(hm,C(0x7a5232),.06,.06,.5,0,0,.2);bx(hm,C(0x4a4f55),.12,.12,.22,0,-.03,.45).rotation.y=Math.PI/2;g.add(hm);a.hammer=hm;
@@ -434,7 +443,8 @@ function model(type,ghost){
   // Splitter/Merger: zusätzlich kleine Pfeile oben auf dem Gehäuse, je Anschlussseite
   if(def.router){const q=new THREE.Object3D(),l=Math.hypot(px,pz)||1;q.position.set(px/l*.24,.605,pz/l*.24);q.rotation.y=-ld*Math.PI/2;
    const t=new THREE.Mesh(PLANE,mat);t.scale.set(.42,.42,1);t.rotation.x=-Math.PI/2;t.renderOrder=2;q.add(t);g.add(q)}}};
- ports(def.ins,arrIn);ports(def.outs,arrOut);return{g,a}}
+ ports(def.ins,arrIn);ports(def.outs,arrOut);
+ if(!ghost){const keep=new Set(Object.values(a).filter(v=>v&&v.isObject3D));mergeStatic(g,keep);for(const v of keep)if(v.isGroup)mergeStatic(v,keep)}return{g,a}}
 
 // ---------- Gebäude ----------
 function toW(def,rot,lx,lz){const w=def.w,d=def.d;return rot===0?[lx,lz]:rot===1?[d-1-lz,lx]:rot===2?[w-1-lx,d-1-lz]:[lz,w-1-lx]}
@@ -1109,12 +1119,12 @@ function renderPerf(avg,js,sec){const el=$('perf'),col=perf.fps>=55?'ok':perf.fp
    (performance.memory?` · JS-Speicher ${(performance.memory.usedJSHeapSize/1048576).toFixed(0)} MB`:'')+`</div>`;
   // Einschätzung: größter Verbraucher + Tipp
   const top=rows[0]||['',0],tips=[];
-  if(perf.fps<50){if(gpu>js&&gpu>8)tips.push('Grafikkarten-limitiert: Sichtweite senken oder Fenster verkleinern. Hardwarebeschleunigung im Browser prüfen.');
+  if(perf.fps<50){if(gpu>js&&gpu>8)tips.push('Grafikkarten-limitiert: Im Pause-Menü Auflösung auf 75 % oder Sichtweite senken. Hardwarebeschleunigung im Browser prüfen.');
    if(top[0]==='Weltgenerierung'&&top[1]>3)tips.push('Neue Welt wird geladen. Das legt sich, sobald du stehst. Niedrigere Sichtweite hilft.');
    if(top[0]==='Fabrik & Bänder'||top[0]==='Band-Items')tips.push('Die Fabrik ist teuer: viele Bänder/Items. Volle Bänder entlasten.');
    if(top[0]==='Chunk-Meshes')tips.push('Viele Blockänderungen werden neu aufgebaut.');
    if(top[0]==='Animation & Partikel')tips.push('Viele arbeitende Gebäude erzeugen Partikel.');
-   if(ri.render.calls>1500)tips.push('Sehr viele Draw Calls ('+ri.render.calls+') – Sichtweite senken.');
+   if(ri.render.calls>900)tips.push('Sehr viele Draw Calls ('+ri.render.calls+') – Sichtweite senken.');
    if(perf.max>100)tips.push('Einzelne Ruckler bis '+perf.max.toFixed(0)+' ms (z. B. Speichern, Weltladen).')}
   h+=tips.length?`<div class="tip">${tips.map(esc).join('<br>')}</div>`:'';h+='<div class="mut">F3: weiter / aus</div>'}
  el.innerHTML=h;
@@ -1368,7 +1378,9 @@ function setupDefense(){if(td.path)return;const fx=-Math.sin(P.yaw),fz=-Math.cos
  let tw=machines.find(m=>m.type==='tower');if(!tw){placeBaseTower(ox,oz);tw=machines.find(m=>m.type==='tower')}if(tw){makePath(tw);toast('Basis und Angriffspfad eingerichtet');renderSettings()}}
 function renderSettings(){ $('tdsetup').innerHTML=td.path?'':`Dieser Spielstand hat noch keine Basis mit Angriffspfad. <button class="b sec" id="tdsetupb" ${net.role!=='solo'?'disabled':''}>Turmverteidigung hier einrichten</button> <span class="mut">(Turm 8 Blöcke vor dir, Pfad nach Norden)</span>`;
  const sb=$('tdsetupb');if(sb)sb.onclick=()=>{setupDefense();resume()};
+ $('rsopts').innerHTML=RS_OPTS.map(n=>`<button class="rec ${n===RS?'on':''}" data-rs="${n}">${n} %</button>`).join('');
  $('rdopts').innerHTML=RD_OPTS.map(n=>`<button class="rec ${n===RD?'on':''}" data-rd="${n}">${n} Chunks <span class="mut">(${n*16} m)</span></button>`).join('')}
+$('rsopts').addEventListener('click',e=>{const b=e.target.closest('[data-rs]');if(!b)return;RS=+b.dataset.rs;try{localStorage.setItem('satiscraft-rs',RS)}catch(e){}applyRS();renderer.setSize(innerWidth,innerHeight);renderSettings();toast('Auflösung: '+RS+' %')});
 $('rdopts').addEventListener('click',e=>{const b=e.target.closest('[data-rd]');if(!b)return;setViewDist(+b.dataset.rd);renderSettings();toast('Sichtweite: '+RD+' Chunks')});
 renderSettings();
 function saveName(){try{localStorage.setItem('satiscraft-name',myName())}catch(e){}}
