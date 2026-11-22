@@ -995,12 +995,22 @@ function renderPerf(avg,js,sec){const el=$('perf'),col=perf.fps>=55?'ok':perf.fp
  if(perfMode===2){const c=$('pfg'),x=c.getContext('2d');x.clearRect(0,0,240,44);x.strokeStyle='#ffffff22';[16.7,33.3].forEach(v=>{const y=44-v;x.beginPath();x.moveTo(0,y);x.lineTo(240,y);x.stroke()});
   for(let i=0;i<240;i++){const v=perf.hist[(perf.hi+i)%240];x.fillStyle=v>33.4?'#ef5a4c':v>17.5?'#e8b04a':'#5fcf6f';x.fillRect(i,44-Math.min(44,v),1,Math.min(44,v))}}}
 $('perf').style.display=perfMode?'block':'none';
+// Warnsymbol über Gebäuden, die nicht arbeiten (Produktion, Miner, Geschütz ohne Munition)
+const warnMat=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');
+ x.fillStyle='#ffcc00';x.strokeStyle='#3a2a00';x.lineWidth=4;x.beginPath();x.moveTo(32,4);x.lineTo(61,58);x.lineTo(3,58);x.closePath();x.fill();x.stroke();
+ x.fillStyle='#1b1300';x.font='bold 40px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('!',32,38);
+ return new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true})})();
+function needsWarn(m){const d=BUILD[m.type];if(d.turret)return!!d.turret.ammo&&!(m.inBuf[d.turret.ammo]>0);
+ if(d.miner||(RECIPES[m.type]&&!d.bridge&&!d.router&&m.type!=='workbench'))return!m.working;return false}
+function updateWarn(m,dt){const bad=needsWarn(m);m.idleT=bad?(m.idleT||0)+dt:0;const show=m.idleT>2.5;
+ if(show&&!m.warn){m.warn=new THREE.Sprite(warnMat);m.warn.scale.set(1.1,1.1,1);m.warn.renderOrder=5;m.g.add(m.warn)}
+ if(m.warn){m.warn.visible=show;if(show)m.warn.position.set(0,m.h+.9+Math.sin(time*3+m.x)*.12,0)}}
 function frame(now){
  requestAnimationFrame(frame);const fdt=now-last;let dt=Math.min(.05,fdt/1000);last=now;time+=dt;perfStart(fdt);
  if(locked)movePlayer(dt);
  camera.position.set(P.x,P.y+1.62,P.z);camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
  pm('Spieler');if(slopesDirty)updateSlopes();for(const m of machines)tickMachine(m,dt);updateBelts(dt);pm('Fabrik & Bänder');drawItems();beltTex.offset.y=(beltTex.offset.y+BS*dt)%1;pm('Band-Items');
- for(const m of machines){const a=m.a;if(m.pulse>0)m.pulse=Math.max(0,m.pulse-dt);
+ for(const m of machines){const a=m.a;updateWarn(m,dt);if(m.pulse>0)m.pulse=Math.max(0,m.pulse-dt);
   if(a.lid)a.lid.rotation.x=-Math.sin(m.pulse/.35*Math.PI)*(a.lamp||.55);
   if(a.hammer)a.hammer.rotation.x=m.pulse>0?-Math.abs(Math.sin(m.pulse*11))*1.1:0;
   const on=m.working||m.pulse>0;
