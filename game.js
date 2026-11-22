@@ -419,7 +419,7 @@ function createMachine(type,ox,oy,oz,rot,data){
  m.cells=cellsOf(def,ox,oy,oz,rot).map(c=>idx(c.x,c.y,c.z));
  for(const i of m.cells){setI(i,MACH);machineAt.set(i,m);markDirty(kX(i),kY(i),kZ(i))}
  const mp=l=>Array.isArray(l)?l.map(([lx,lz,ld])=>{const[a,b]=toW(def,rot,lx,lz);return{x:ox+a,y:oy,z:oz+b,dir:(ld+rot)%4}}):[];
- m.ins=mp(def.ins);m.outs=mp(def.outs);if(def.store){m.disp=normDisp(m.disp,m.outs.length);m.di=m.outs.map(()=>0);m.ps=m.outs.map(()=>'')}
+ m.ins=mp(def.ins);m.outs=mp(def.outs);if(def.store){m.disp=normDisp(m.disp,m.outs.length);m.di=m.outs.map(()=>'');m.ps=m.outs.map(()=>'')}
  if(def.router&&data){for(const k in m.outBuf)for(let i=0;i<m.outBuf[k]&&m.tr.length<4;i++)m.tr.push({item:k});m.outBuf={}}
  // Abbauziel nur beim Aufstellen automatisch wählen; geladene Miner behalten ihre gespeicherte Einstellung.
  if(def.miner&&!data){m.recipe=0;let ore=false;minerArea(m,()=>{ore=true;return true});if(!ore)m.recipe=1}
@@ -484,7 +484,9 @@ function dispense(m){m.working=false;let gave=false;
  m.outs.forEach((p,i)=>{const sel=m.disp[i];let st;
   if(!sel)st='aus';else{const b=belts.get(idx(p.x,p.y,p.z));
    if(!b)st='kein Band (oranger Pfeil, Bodenhöhe)';else if(b.dir===(p.dir+2)%4)st='Band zeigt zum Lager – umdrehen';else if(!beltFree(b))st='Band voll';
-   else{const used=new Set(m.disp.flatMap(v=>Array.isArray(v)?v:[]));const ks=(sel==='all'?Object.keys(m.inBuf).filter(k=>!used.has(k)):sel).filter(k=>m.inBuf[k]>0);let it=null;if(ks.length){m.di[i]=(m.di[i]+1)%ks.length;it=ks[m.di[i]]}
+   else{const used=new Set(m.disp.flatMap(v=>Array.isArray(v)?v:[]));// Streng reihum: immer das nächste vorhandene Item nach dem zuletzt ausgegebenen (feste Reihenfolge)
+    const ord=sel==='all'?Object.keys(m.inBuf).filter(k=>!used.has(k)).sort():sel;let it=null;const st0=ord.indexOf(m.di[i])+1;
+    for(let j=0;j<ord.length;j++){const k=ord[(st0+j)%ord.length];if(m.inBuf[k]>0){it=k;break}}if(it)m.di[i]=it
     if(!it)st=sel==='all'?(used.size?'nichts Übriges im Lager':'Lager leer'):sel.length>1?'keins der gewählten Items im Lager':'kein '+ITEMS[sel[0]][0]+' im Lager';
     else{m.inBuf[it]--;if(!m.inBuf[it])delete m.inBuf[it];b.items.push({item:it,p:0});gave=true;st='gibt aus'}}}
   if(st!=='Band voll'||m.ps[i]!=='gibt aus')m.ps[i]=st});
