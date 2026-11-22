@@ -25,7 +25,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 ## Spielprinzip
 
 - **Werkzeugstufen:** Hand → Holz- → Stein- → Eisen- → Stahlspitzhacke. Jede Stufe schaltet härtere Erze frei: Stein und Kohle, dann Kupfer und Eisen, dann Gold, zuletzt Titan.
-- **Miner:** Setz ihn auf ein Erzvorkommen. Jeder Erzblock darunter enthält 40 Einheiten. Der Miner baut den Bereich Schicht für Schicht ab.
+- **Miner:** Setz ihn auf ein Erzvorkommen oder auf Stein. Das Abbauziel (Erze oder Stein) wählt er automatisch; im Maschinenfenster (E) kannst du es umstellen. Jeder Erzblock darunter enthält 40 Einheiten. Der Miner baut den Bereich Schicht für Schicht ab.
 - **Gebäude:** Sie brauchen eine ebene, freigeräumte Fläche, je nach Gebäude 1×1, 2×2, 2×3 oder 3×3.
 - **Anschlüsse:** Grüne Pfeile sind Eingänge, orange Pfeile sind Ausgänge.
 - **Bänder kreuzen:** Die Förderbandbrücke ist 3 Felder lang und überspannt 1 Feld, die lange Brücke ist 5 lang und überspannt 3. Unter dem Bogen kann ein anderes Band durchlaufen. Alternativ baust du die Brücke selbst aus Blöcken: Bänder steigen und fallen pro Feld um einen Block und werden dabei als Rampe dargestellt.

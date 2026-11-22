@@ -274,6 +274,7 @@ function createMachine(type,ox,oy,oz,rot,data){
  for(const i of m.cells){world[i]=MACH;machineAt.set(i,m);markDirty(i%W,Math.floor(i/(W*D)),Math.floor(i/W)%D)}
  const mp=l=>Array.isArray(l)?l.map(([lx,lz,ld])=>{const[a,b]=toW(def,rot,lx,lz);return{x:ox+a,y:oy,z:oz+b,dir:(ld+rot)%4}}):[];
  m.ins=mp(def.ins);m.outs=mp(def.outs);
+ if(def.miner&&m.recipe!==1){m.recipe=0;let ore=false;minerArea(m,()=>{ore=true;return true});if(!ore)m.recipe=1}
  const{g,a}=model(type);g.position.set(ox+rw/2,oy,oz+rd/2);g.rotation.y=-rot*Math.PI/2;scene.add(g);g.updateMatrixWorld(true);m.g=g;m.a=a;m.pulse=0;m.emitT=Math.random()*.3;machines.push(m);return m}
 function removeBuilding(t){
  if(t.dir!==undefined&&t.items){scene.remove(t.g);belts.delete(idx(t.x,t.y,t.z));slopesDirty=true;world[idx(t.x,t.y,t.z)]=0;for(const i of t.items)add(i.item,1);
@@ -310,7 +311,7 @@ function updateBelts(dt){for(const b of belts.values()){const its=b.items;
  for(let i=0;i<its.length;i++){const lim=i===0?1:its[i-1].p-SP;its[i].p=Math.max(its[i].p,Math.min(its[i].p+BS*dt,lim))}
  if(its.length&&its[0].p>=1&&transfer(b,its[0].item))its.shift()}}
 function minerArea(m,fn){const def=BUILD[m.type];for(let y=m.y-1;y>=Math.max(1,m.y-12);y--)for(let x=m.x-1;x<=m.x+m.rw;x++)for(let z=m.z-1;z<=m.z+m.rd;z++){
- const id=get(x,y,z);if(BL[id]&&BL[id].ore&&BL[id].tier<=def.tier){if(fn(x,y,z,id))return}}}
+ const id=get(x,y,z);if(m.recipe===1?id===3:(BL[id]&&BL[id].ore&&BL[id].tier<=def.tier)){if(fn(x,y,z,id))return}}}
 const bridgePath=(def,f)=>[.27+1.25*Math.min(1,Math.sin(Math.PI*f)*1.6),-def.d/2+f*def.d];
 function tickMachine(m,dt){
  const def=BUILD[m.type];
@@ -323,7 +324,7 @@ function tickMachine(m,dt){
    if(m.t>=def.period){m.t=0;let found=false;
     minerArea(m,(x,y,z,id)=>{found=true;const k=idx(x,y,z);let r=reserves.has(k)?reserves.get(k):RESERVE;r--;const it=BL[id].drop;m.outBuf[it]=(m.outBuf[it]||0)+1;
      stats.produced[it]=(stats.produced[it]||0)+1;if(r<=0){reserves.delete(k);setBlock(x,y,z,0,true)}else reserves.set(k,r);return true});
-    if(!found){m.working=false;m.status='Kein abbaubares Erz im Bereich unter dem Miner'}}}}
+    if(!found){m.working=false;m.status=m.recipe===1?'Kein Stein im Bereich unter dem Miner':'Kein abbaubares Erz im Bereich unter dem Miner – Abbauziel auf Stein stellen?'}}}}
  else if(!def.bridge&&RECIPES[m.type]){const r=RECIPES[m.type][m.recipe];
   const ok=Object.keys(r.in).every(k=>(m.inBuf[k]||0)>=r.in[k]);const full=Object.keys(r.out).some(k=>(m.outBuf[k]||0)>=MAXOUT);
   if(ok&&!full){m.working=true;m.status='Produziert…';m.t+=dt;if(m.t>=r.t){m.t=0;for(const k in r.in){m.inBuf[k]-=r.in[k];if(!m.inBuf[k])delete m.inBuf[k]}
@@ -389,7 +390,8 @@ function renderPanel(){
   if(m.type==='workbench'){h+=`<p>Aktuell: <b>${TOOLS[tier].n}</b></p>`+[1,2,3,4].map(t=>`<div class="row"><div><b>${TOOLS[t].n}</b>${costHtml(TOOLREC[t])}</div><button class="b" data-act="craft:${t}" ${tier>=t||!has(TOOLREC[t])||t>tier+1?'disabled':''}>${tier>=t?'Vorhanden':'Herstellen'}</button></div>`).join('')}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>`}
   else if(def.miner){let left=0,blocks=0;minerArea(m,(x,y,z)=>{const k=idx(x,y,z);left+=reserves.has(k)?reserves.get(k):RESERVE;blocks++});
-   h+=`<p>${m.status||'Startet…'}</p><p class="mut">Abbaubereich: ${m.rw+2}×${m.rd+2} Felder, bis 12 Blöcke tief. Verbleibend: <b style="color:var(--ink)">${left}</b> Einheiten in ${blocks} Erzblöcken.</p>
+   h+=`<h3>Abbauziel</h3><div class="recs">${['Erze','Stein'].map((n,i)=>`<button class="rec ${i===m.recipe?'on':''}" data-act="recipe:${i}">${n}</button>`).join('')}</div>
+   <p>${m.status||'Startet…'}</p><p class="mut">Abbaubereich: ${m.rw+2}×${m.rd+2} Felder, bis 12 Blöcke tief. Verbleibend: <b style="color:var(--ink)">${left}</b> Einheiten in ${blocks} ${m.recipe===1?'Steinblöcken':'Erzblöcken'}.</p>
     <div class="prog"><i style="width:${Math.min(100,m.t/def.period*100)}%"></i></div><h3>Ausgang</h3>${bufRows(m.outBuf,'take','Entnehmen')}`}
   else{const rs=RECIPES[m.type],r=rs[m.recipe];
    h+=`<h3>Rezept</h3><div class="recs">${rs.map((q,i)=>`<button class="rec ${i===m.recipe?'on':''}" data-act="recipe:${i}">${Object.keys(q.in).map(k=>q.in[k]+'× '+ITEMS[k][0]).join(' + ')} → ${Object.keys(q.out).map(k=>q.out[k]+'× '+ITEMS[k][0]).join(', ')} <span class="mut">(${q.t} s)</span></button>`).join('')}</div>
@@ -480,7 +482,7 @@ function sanitize(d){
  for(const[k,a,b]of[['x',.4,W-.4],['y',-5,H+5],['z',.4,D-.4],['yaw',-1e6,1e6],['pitch',-1.55,1.55]])if(isNum(p[k],a,b))o.P[k]=p[k];
  for(const m of arr(d.machines)){if(!m||typeof m!=='object'||!own(BUILD,m.t)||m.t==='belt')continue;
   if(!isInt(m.x,0,W-1)||!isInt(m.y,1,H-1)||!isInt(m.z,0,D-1)||!isInt(m.r,0,3))continue;
-  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:0})}
+  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0})}
  for(const b of arr(d.belts)){if(!Array.isArray(b)||!isInt(b[0],0,W-1)||!isInt(b[1],1,H-1)||!isInt(b[2],0,D-1)||!isInt(b[3],0,3))continue;
   o.belts.push([b[0],b[1],b[2],b[3],arr(b[4]).filter(k=>typeof k==='string'&&own(ITEMS,k)).slice(0,4)])}
  return o}
