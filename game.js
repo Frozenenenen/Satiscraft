@@ -346,7 +346,7 @@ function pause(){locked=false;releaseMouse();showPause(true)}
 $('play').onclick=()=>resume();
 $('saveb').onclick=()=>save();
 $('newb').onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}newWorld(Math.floor(Math.random()*1e6));toast('Neue Welt erstellt')};
-function openPanel(kind,m){panel={kind,m};$('panel').classList.add('on');renderPanel();locked=false;releaseMouse()}
+function openPanel(kind,m){panel={kind,m};panelHtml='';$('panel').classList.add('on');renderPanel();locked=false;releaseMouse()}
 function closePanel(){panel=null;$('panel').classList.remove('on');resume()}
 $('panel').addEventListener('mousedown',e=>{if(e.target.id==='panel')closePanel()});
 function costHtml(c){return`<div class="cost">${Object.keys(c).map(k=>`<span class="${(inv[k]||0)>=c[k]?'':'miss'}">${c[k]}× ${sw(k)}</span>`).join('')}</div>`}
@@ -372,7 +372,12 @@ function renderPanel(){
    <p>${m.status||''}</p><div class="prog"><i style="width:${Math.min(100,m.t/r.t*100)}%"></i></div>
    <div class="cols"><div><h3>Eingang</h3>${Object.keys(r.in).map(k=>`<div class="row"><span>${m.inBuf[k]||0}/${MAXIN} ${sw(k)} <span class="mut">(Inventar: ${inv[k]||0})</span></span><button class="b sec" data-act="put:${k}" ${inv[k]?'':'disabled'}>Einlegen</button></div>`).join('')}</div>
    <div><h3>Ausgang</h3>${bufRows(m.outBuf,'take','Entnehmen')}</div></div>`}}
- pc.innerHTML=h}
+ if(h===panelHtml)return;panelHtml=h;pc.innerHTML=h}
+// Während die Maustaste im Fenster gedrückt ist, nicht neu aufbauen – sonst verliert der Browser den Klick.
+let panelHtml='',panelHold=false;
+$('pc').addEventListener('pointerdown',()=>{panelHold=true});
+addEventListener('pointerup',()=>setTimeout(()=>{panelHold=false},0));
+addEventListener('pointercancel',()=>{panelHold=false});
 $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;const[act,arg]=b.dataset.act.split(':');const m=panel&&panel.m;
  if(act==='close')return closePanel();
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
@@ -545,7 +550,7 @@ function frame(now){
  else md.style.display='none';
  $('info').innerHTML=info;
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').style.opacity=0}
- slow+=dt;if(slow>.3){slow=0;if(panel&&panel.kind==='machine')renderPanel();renderGoal()}
+ slow+=dt;if(slow>.3){slow=0;if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
  saveT+=dt;if(saveT>60){saveT=0;if(locked)save()}
  renderer.render(scene,camera)}
 
