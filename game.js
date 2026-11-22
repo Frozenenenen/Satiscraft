@@ -385,8 +385,12 @@ function model(type,ghost){
  if(type==='assembler'){bx(g,C(0x3b3f44),2.95,.25,2.95,0,0,0);bx(g,C(0x2f9b8f),2.6,1,2.6,0,.25,0);bx(g,C(0xd0d4d8),1.4,.1,1.4,0,1.25,.2);
   const arm=new THREE.Group();arm.position.set(-.8,1.25,-.8);bx(arm,C(0xe8892b),.3,.9,.3,0,0,0);const up=bx(arm,C(0xe8892b),.2,.2,1.1,0,.8,.5);up.position.z=.5;
   bx(arm,C(0x33373c),.25,.3,.25,0,.55,1.05);g.add(arm);a.arm=arm;a.emit.push({p:[0,1.4,.2],k:'spark'})}
- const ports=(list,mat)=>{if(!Array.isArray(list))return;for(const[lx,lz,ld]of list){const p=new THREE.Object3D();p.position.set(lx+.5-def.w/2,.04,lz+.5-def.d/2);p.rotation.y=-ld*Math.PI/2;
-  const ar=new THREE.Mesh(PLANE,mat);ar.rotation.x=-Math.PI/2;p.add(ar);g.add(p)}};
+ const ports=(list,mat)=>{if(!Array.isArray(list))return;for(const[lx,lz,ld]of list){const px=lx+.5-def.w/2,pz=lz+.5-def.d/2;
+  // Pfeil schwebt knapp über Bandhöhe, damit er auf angeschlossenen Bändern sichtbar bleibt
+  const p=new THREE.Object3D();p.position.set(px,.135,pz);p.rotation.y=-ld*Math.PI/2;const ar=new THREE.Mesh(PLANE,mat);ar.rotation.x=-Math.PI/2;ar.renderOrder=2;p.add(ar);g.add(p);
+  // Splitter/Merger: zusätzlich kleine Pfeile oben auf dem Gehäuse, je Anschlussseite
+  if(def.router){const q=new THREE.Object3D(),l=Math.hypot(px,pz)||1;q.position.set(px/l*.24,.605,pz/l*.24);q.rotation.y=-ld*Math.PI/2;
+   const t=new THREE.Mesh(PLANE,mat);t.scale.set(.42,.42,1);t.rotation.x=-Math.PI/2;t.renderOrder=2;q.add(t);g.add(q)}}};
  ports(def.ins,arrIn);ports(def.outs,arrOut);return{g,a}}
 
 // ---------- Gebäude ----------
