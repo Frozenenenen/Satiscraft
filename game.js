@@ -263,8 +263,11 @@ function arrowTex(col,belt){const c=document.createElement('canvas');c.width=c.h
 
 // ---------- Three.js ----------
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-const RS_OPTS=[100,75,50];let RS=(()=>{try{const v=+localStorage.getItem('satiscraft-rs');return RS_OPTS.includes(v)?v:100}catch(e){return 100}})();
-const applyRS=()=>renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)*RS/100);applyRS();renderer.setSize(innerWidth,innerHeight);document.body.prepend(renderer.domElement);
+const RS_OPTS=[0,100,75,50];let RS=(()=>{try{const v=localStorage.getItem('satiscraft-rs');return v!==null&&RS_OPTS.includes(+v)?+v:0}catch(e){return 0}})(),autoRS=100,fpsAvg=60,autoT=0;
+const curRS=()=>RS||autoRS;const applyRS=()=>renderer.setPixelRatio(Math.min(devicePixelRatio,1.5)*curRS()/100);applyRS();
+// Auto: Auflösung passt sich an, wenn die Bildrate dauerhaft niedrig bzw. hoch ist
+function autoRes(fdt){if(fdt>0&&fdt<500)fpsAvg+=(1000/fdt-fpsAvg)*.03;if(RS||document.hidden||!locked)return;autoT+=fdt/1000;if(autoT<4)return;autoT=0;
+ const st=[100,85,70,55];let i=st.indexOf(autoRS);if(fpsAvg<42&&i<st.length-1)i++;else if(fpsAvg>57&&i>0)i--;else return;autoRS=st[i];applyRS();renderer.setSize(innerWidth,innerHeight)}renderer.setSize(innerWidth,innerHeight);document.body.prepend(renderer.domElement);
 const canvas=renderer.domElement;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9fd4f5);scene.fog=new THREE.Fog(0x9fd4f5,45,115);
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.05,220);camera.rotation.order='YXZ';
@@ -437,12 +440,12 @@ function model(type,ghost){
  if(type==='tesla'){bx(g,C(0x3b3f44),1.9,.3,1.9,0,0,0);bx(g,C(0x5d6670),.5,1.9,.5,0,.3,0,CYL);for(const yy of[.7,1.2,1.7])bx(g,C(0xd9783a),.9,.12,.9,0,yy,0,CYL);
   for(const[sx,sz]of[[-.7,-.7],[.7,-.7],[-.7,.7],[.7,.7]])bx(g,C(0x8a939c),.14,.6,.14,sx,.3,sz);
   a.glow=bx(g,ghost?ghostMat:new THREE.MeshLambertMaterial({color:0x7fd7ff,emissive:0x7fd7ff,emissiveIntensity:.8}),.6,.6,.6,0,2.3,0);a.muzzle=[0,2.6,0]}
- const ports=(list,mat)=>{if(!Array.isArray(list))return;for(const[lx,lz,ld]of list){const px=lx+.5-def.w/2,pz=lz+.5-def.d/2;
+ a.ports=[];const ports=(list,mat)=>{if(!Array.isArray(list))return;for(const[lx,lz,ld]of list){const px=lx+.5-def.w/2,pz=lz+.5-def.d/2;
   // Pfeil schwebt knapp über Bandhöhe, damit er auf angeschlossenen Bändern sichtbar bleibt
-  const p=new THREE.Object3D();p.position.set(px,.135,pz);p.rotation.y=-ld*Math.PI/2;const ar=new THREE.Mesh(PLANE,mat);ar.rotation.x=-Math.PI/2;ar.renderOrder=2;p.add(ar);g.add(p);
+  const p=new THREE.Object3D();p.position.set(px,.135,pz);p.rotation.y=-ld*Math.PI/2;const ar=new THREE.Mesh(PLANE,mat);ar.rotation.x=-Math.PI/2;ar.renderOrder=2;p.add(ar);g.add(p);a.ports.push(p);
   // Splitter/Merger: zusätzlich kleine Pfeile oben auf dem Gehäuse, je Anschlussseite
   if(def.router){const q=new THREE.Object3D(),l=Math.hypot(px,pz)||1;q.position.set(px/l*.24,.605,pz/l*.24);q.rotation.y=-ld*Math.PI/2;
-   const t=new THREE.Mesh(PLANE,mat);t.scale.set(.42,.42,1);t.rotation.x=-Math.PI/2;t.renderOrder=2;q.add(t);g.add(q)}}};
+   const t=new THREE.Mesh(PLANE,mat);t.scale.set(.42,.42,1);t.rotation.x=-Math.PI/2;t.renderOrder=2;q.add(t);g.add(q);a.ports.push(q)}}};
  ports(def.ins,arrIn);ports(def.outs,arrOut);
  if(!ghost){const keep=new Set(Object.values(a).filter(v=>v&&v.isObject3D));mergeStatic(g,keep);for(const v of keep)if(v.isGroup)mergeStatic(v,keep)}return{g,a}}
 
@@ -464,7 +467,7 @@ function checkPlace(type,ox,oy,oz,rot,ignoreP){
  if(!has(def.cost))return'Zu wenig Ressourcen';return''}
 function createMachine(type,ox,oy,oz,rot,data){
  const def=BUILD[type],[rw,rd]=dims(def,rot);
- if(type==='belt'){const b={x:ox,y:oy,z:oz,dir:rot,items:[],s:0};const g=new THREE.Group(),k=model('belt').g;g.add(k);b.k=k;g.position.set(ox+.5,oy,oz+.5);g.rotation.y=-rot*Math.PI/2;scene.add(g);b.g=g;
+ if(type==='belt'){const b={x:ox,y:oy,z:oz,dir:rot,items:[],s:0};beltsDirty=true;
   belts.set(idx(ox,oy,oz),b);rawSet(ox,oy,oz,BELT);if(data)b.items=data.map((it,i)=>({item:it,p:Math.max(0,.9-i*SP)}));slopesDirty=true;if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return b}
  const m={type,x:ox,y:oy,z:oz,rot,rw,rd,h:def.h,inBuf:{},outBuf:{},recipe:0,t:0,status:'',working:false,tr:[]};
  if(data){m.inBuf=data.i||{};m.outBuf=data.o||{};m.recipe=data.rc||0;m.disp=data.ds||null;if(data.nm)m.name=data.nm;if(type==='sorter')m.filter=dispOk(data.fl)}else if(def.store)m.disp='all'
@@ -479,7 +482,7 @@ function createMachine(type,ox,oy,oz,rot,data){
  const{g,a}=model(type);g.position.set(ox+rw/2,oy,oz+rd/2);g.rotation.y=-rot*Math.PI/2;scene.add(g);g.updateMatrixWorld(true);m.g=g;m.a=a;m.pulse=0;m.emitT=Math.random()*.3;machines.push(m);if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return m}
 function removeBuilding(t){
  if(net.role==='host')netEmit({t:'rm',i:keyOf(t)});
- if(t.dir!==undefined&&t.items){scene.remove(t.g);belts.delete(idx(t.x,t.y,t.z));slopesDirty=true;rawSet(t.x,t.y,t.z,0);for(const i of t.items)add(i.item,1);
+ if(t.dir!==undefined&&t.items){beltsDirty=true;belts.delete(idx(t.x,t.y,t.z));slopesDirty=true;rawSet(t.x,t.y,t.z,0);for(const i of t.items)add(i.item,1);
   for(const k in BUILD.belt.cost)add(k,BUILD.belt.cost[k]);return}
  const m=t;for(const i of m.cells){setI(i,0);machineAt.delete(i);markDirty(kX(i),kY(i),kZ(i))}for(const it of m.tr)add(it.item,1);
  scene.remove(m.g);machines=machines.filter(q=>q!==m);for(const k in m.inBuf)add(k,m.inBuf[k]);for(const k in m.outBuf)add(k,m.outBuf[k]);
@@ -489,11 +492,24 @@ function removeBuilding(t){
 // Rampen: ein Band, dessen Ziel 1 Block höher liegt, steigt an; ein Band, das von 1 Block höher beliefert wird, fällt ab.
 let slopesDirty=false;
 function beltAhead(b,dy){const[dx,dz]=DIRS[b.dir];const nb=belts.get(idx(b.x+dx,b.y+dy,b.z+dz));return nb&&nb.dir!==(b.dir+2)%4?nb:null}
+// Alle Bänder werden mit 2 Draw Calls gezeichnet (Instanzen): Körper und laufende Oberseite
+let beltsDirty=true,beltInst=null;
+function makeBeltInst(cap){const g=model('belt').g;g.updateMatrixWorld(true);let body=null,top=null;
+ for(const c of g.children)if(c.isMesh){const geo=c.geometry.clone();c.updateMatrix();geo.applyMatrix4(c.matrix);if(c.material===beltTop)top=geo;else body=geo}
+ if(beltInst){scene.remove(beltInst.body);scene.remove(beltInst.top);beltInst.body.dispose();beltInst.top.dispose()}
+ const b=new THREE.InstancedMesh(body,mergedMat,cap),t=new THREE.InstancedMesh(top,beltTop,cap);for(const m of[b,t]){m.frustumCulled=false;m.count=0;scene.add(m)}
+ beltInst={body:b,top:t,cap}}
+const bM=new THREE.Matrix4(),bR=new THREE.Matrix4(),bS=new THREE.Matrix4();
+function rebuildBelts(){beltsDirty=false;if(!beltInst||belts.size>beltInst.cap)makeBeltInst(Math.max(256,Math.ceil(belts.size*1.5)));let n=0;
+ for(const b of belts.values()){bM.makeTranslation(b.x+.5,b.y,b.z+.5);bM.multiply(bR.makeRotationY(-b.dir*Math.PI/2));
+  if(b.s){bM.multiply(bR.makeTranslation(0,.5,0));bM.multiply(bR.makeRotationX(b.s*-Math.PI/4));bM.multiply(bS.makeScale(1,1,Math.SQRT2))}
+  beltInst.body.setMatrixAt(n,bM);beltInst.top.setMatrixAt(n,bM);n++}
+ beltInst.body.count=beltInst.top.count=n;beltInst.body.instanceMatrix.needsUpdate=beltInst.top.instanceMatrix.needsUpdate=true}
 function updateSlopes(){slopesDirty=false;
  for(const b of belts.values()){let s=0;
   if(!beltAhead(b,0)&&beltAhead(b,1))s=1;
   else for(let d=0;d<4&&!s;d++){const[dx,dz]=DIRS[d];const ub=belts.get(idx(b.x-dx,b.y+1,b.z-dz));if(ub&&ub.dir===d&&!beltAhead(ub,0))s=-1}
-  if(s!==b.s){b.s=s;b.k.rotation.x=s?s*-Math.PI/4:0;b.k.scale.z=s?Math.SQRT2:1;b.k.position.y=s?.5:0}}}
+  if(s!==b.s){b.s=s;beltsDirty=true}}}
 const beltFree=b=>!b.items.length||(b.items.length<4&&b.items[b.items.length-1].p>=SP);
 function machineAccept(m,item,pi){
  const def=BUILD[m.type];
@@ -752,7 +768,7 @@ function doBuild(type,ox,oy,oz,rot){const def=BUILD[type];
 function doMine(x,y,z,id){const bd=BL[id];setBlock(x,y,z,0,true);if(isLog(id)||isLeaf(id))checkLeavesAround(x,y,z);reserves.delete(idx(x,y,z));if(bd.drop)add(bd.drop,bd.ore?2:1)}
 // Shift + Ziehen: Bänder folgen der Zugrichtung; das vorige Band wird zum neuen hin ausgerichtet (Kurven).
 let lastBeltPos=null;
-function setBeltDir(b,d){b.dir=d;b.g.rotation.y=-d*Math.PI/2;slopesDirty=true;if(net.role==='host')netEmit({t:'bdir',i:idx(b.x,b.y,b.z),d})}
+function setBeltDir(b,d){b.dir=d;beltsDirty=true;slopesDirty=true;if(net.role==='host')netEmit({t:'bdir',i:idx(b.x,b.y,b.z),d})}
 const keyOf=t=>t.items&&t.dir!==undefined?idx(t.x,t.y,t.z):t.cells[0];
 function dragBelt(){const k=place.ox+','+place.oy+','+place.oz;if(k===lastBelt||place.err)return;
  let dir=null;const lp=lastBeltPos;
@@ -807,7 +823,7 @@ function clearFor(type,ox,oy,oz,rot){const cells=type==='belt'?[{x:ox,y:oy,z:oz}
  for(const c of cells)if(get(c.x,c.y,c.z))setBlock(c.x,c.y,c.z,0,true);return true}
 function fits(type,ox,oy,oz,rot){if(type==='belt')return isXZ(ox)&&isXZ(oz)&&oy>=1&&oy<H&&!get(ox,oy,oz);
  return cellsOf(BUILD[type],ox,oy,oz,rot).every(c=>isXZ(c.x)&&isXZ(c.z)&&c.y>=1&&c.y<H&&!get(c.x,c.y,c.z))}
-function clearAll(){decay.clear();if(npc.g){scene.remove(npc.g);npc.g=null}npc.carry={};for(const id of[...drops.keys()])removeDrop(id);pathAirCols.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);for(const b of belts.values())scene.remove(b.g);machines=[];belts.clear();machineAt.clear();changes.clear();
+function clearAll(){decay.clear();if(npc.g){scene.remove(npc.g);npc.g=null}npc.carry={};for(const id of[...drops.keys()])removeDrop(id);pathAirCols.clear();for(const e of enemies)scene.remove(e.g);enemies=[];spawnQ=[];for(const sh of shots)scene.remove(sh.mesh);shots=[];pathSet.clear();route=[];if(portal){scene.remove(portal);portal=null}for(const m of machines)scene.remove(m.g);machines=[];belts.clear();beltsDirty=true;machineAt.clear();changes.clear();
  for(const c of cols.values())hideCol(c);cols.clear();changesByCol.clear();featCache.clear();reserves.clear();dirty.clear();buildType=null}
 function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:0,hp:TOWER_HP,every:prefEvery(),defeats:0,kills:0,path:null};inv={};tier=0;gadgets={radar:false};stats={delivered:0,produced:{}};goal=0;
  P.x=64.5;P.z=64.5;P.y=surfaceH(64,64)+1;P.vy=0;P.yaw=0;P.pitch=-.15;
@@ -914,7 +930,7 @@ function enemyModel(ty){const E=ETYPES[ty],g=new THREE.Group(),b=new THREE.Group
  bx(b,M(0xffe14d,1),.1*s,.08*s,.03,-.1*s,1.45*s,.2*s);bx(b,M(0xffe14d,1),.1*s,.08*s,.03,.1*s,1.45*s,.2*s);
  const l1=bx(b,M(0x33373c),.18*s,.55*s,.2*s,-.15*s,0,0),l2=bx(b,M(0x33373c),.18*s,.55*s,.2*s,.15*s,0,0);
  const bar=new THREE.Group();bar.position.y=1.95*s;const bg=new THREE.Mesh(BOX,M(0x23272c));bg.scale.set(.9,.1,.02);bar.add(bg);
- const fg=new THREE.Mesh(BOX,M(0x5fcf6f,1));fg.scale.set(.88,.07,.03);fg.position.z=.01;bar.add(fg);g.add(bar);scene.add(g);return{g,b,l1,l2,bar,fg}}
+ const fg=new THREE.Mesh(BOX,M(0x5fcf6f,1));fg.scale.set(.88,.07,.03);fg.position.z=.01;bar.add(fg);g.add(bar);mergeStatic(b,new Set([l1,l2]));scene.add(g);return{g,b,l1,l2,bar,fg}}
 function spawnEnemy(ty,hp,id,s){const e={id:id||enemyId++,ty,s:s||0,hp,max:hp,ph:Math.random()*6,...enemyModel(ty)};enemies.push(e);return e}
 // ---------- Beute: Gegner lassen Items fallen, Einsammeln durch Darüberlaufen ----------
 // Gegner lassen nur Materialien fallen, die es sonst nirgends gibt
@@ -1116,7 +1132,7 @@ function renderPerf(avg,js,sec){const el=$('perf'),col=perf.fps>=55?'ok':perf.fp
   const rows=Object.entries(sec).sort((x,y)=>y[1]-x[1]);const mx=Math.max(1,...rows.map(r=>r[1]));
   h+=`<canvas id="pfg" width="240" height="44"></canvas><table>`+rows.map(([k,v])=>`<tr><td>${k}</td><td class="r">${v.toFixed(2)} ms</td><td><i style="width:${Math.round(v/mx*60)}px"></i></td></tr>`).join('')+
    `<tr class="sum"><td>JavaScript gesamt</td><td class="r">${js.toFixed(2)} ms</td><td></td></tr><tr><td>Rest (GPU, Browser, Warten)</td><td class="r">${gpu.toFixed(1)} ms</td><td></td></tr></table>`+
-   `<div class="mut">Draw Calls ${ri.render.calls} · Dreiecke ${(ri.render.triangles/1000).toFixed(0)}k · Geometrien ${ri.memory.geometries}<br>Spalten ${loaded} · Chunk-Meshes ${meshes} · Warteschlange ${dirty.size}<br>Gebäude ${machines.length} · Bänder ${belts.size} · Items auf Bändern ${items}<br>Gegner ${enemies.length} · Partikel ${pts} · Sichtweite ${RD} · Auflösung ${renderer.domElement.width}×${renderer.domElement.height}`+
+   `<div class="mut">Draw Calls ${ri.render.calls} · Dreiecke ${(ri.render.triangles/1000).toFixed(0)}k · Geometrien ${ri.memory.geometries}<br>Spalten ${loaded} · Chunk-Meshes ${meshes} · Warteschlange ${dirty.size}<br>Gebäude ${machines.length} · Bänder ${belts.size} · Items auf Bändern ${items}<br>Gegner ${enemies.length} · Partikel ${pts} · Sichtweite ${RD} · Auflösung ${renderer.domElement.width}×${renderer.domElement.height} (${curRS()} %${RS?'':', auto'})`+
    (performance.memory?` · JS-Speicher ${(performance.memory.usedJSHeapSize/1048576).toFixed(0)} MB`:'')+`</div>`;
   // Einschätzung: größter Verbraucher + Tipp
   const top=rows[0]||['',0],tips=[];
@@ -1146,10 +1162,10 @@ function updateWarn(m,dt){const bad=needsWarn(m);m.idleT=bad?(m.idleT||0)+dt:0;c
  if(show&&!m.warn){m.warn=new THREE.Sprite(warnMat);m.warn.scale.set(1.1,1.1,1);m.warn.renderOrder=5;m.g.add(m.warn)}
  if(m.warn){m.warn.visible=show;if(show)m.warn.position.set(0,m.h+.9+Math.sin(time*3+m.x)*.12,0)}}
 function frame(now){
- requestAnimationFrame(frame);const fdt=now-last;let dt=Math.min(.05,fdt/1000);last=now;time+=dt;perfStart(fdt);
+ requestAnimationFrame(frame);const fdt=now-last;let dt=Math.min(.05,fdt/1000);last=now;time+=dt;perfStart(fdt);autoRes(fdt);
  if(locked)movePlayer(dt);
  camera.position.set(P.x,P.y+1.62,P.z);camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
- pm('Spieler');if(slopesDirty)updateSlopes();for(const m of machines)tickMachine(m,dt);updateBelts(dt);pm('Fabrik & Bänder');drawItems();beltTex.offset.y=(beltTex.offset.y+BS*dt)%1;pm('Band-Items');
+ pm('Spieler');if(slopesDirty)updateSlopes();if(beltsDirty)rebuildBelts();for(const m of machines)tickMachine(m,dt);updateBelts(dt);pm('Fabrik & Bänder');drawItems();beltTex.offset.y=(beltTex.offset.y+BS*dt)%1;pm('Band-Items');
  for(const m of machines){const a=m.a;updateWarn(m,dt);if(m.pulse>0)m.pulse=Math.max(0,m.pulse-dt);
   if(a.lid)a.lid.rotation.x=-Math.sin(m.pulse/.35*Math.PI)*(a.lamp||.55);
   if(a.hammer)a.hammer.rotation.x=m.pulse>0?-Math.abs(Math.sin(m.pulse*11))*1.1:0;
@@ -1162,7 +1178,7 @@ function frame(now){
   if(a.house)a.house.position.y=1.6+.45+Math.sin(time*47)*.012;
   if(a.press)a.press.position.y=1.35+.3+Math.sin(time*6)*.2;
   if(a.arm){a.arm.rotation.y=Math.sin(time*2)*1.2;a.arm.rotation.x=Math.sin(time*3.1)*.12}
-  if(a.emit.length&&(m.type!=='workbench'||m.pulse>0)){m.emitT-=dt;if(m.emitT<=0){m.emitT=PK[a.emit[0].k].rate*(.7+Math.random()*.6);
+  if(a.emit.length&&(m.type!=='workbench'||m.pulse>0)&&(m.x-P.x)**2+(m.z-P.z)**2<2500){m.emitT-=dt;if(m.emitT<=0){m.emitT=PK[a.emit[0].k].rate*(.7+Math.random()*.6);
    for(const e of a.emit){tmpV.set(e.p[0],e.p[1],e.p[2]);m.g.localToWorld(tmpV);emit(tmpV,e.k)}}}}
  updateParts(dt);pm('Animation & Partikel');
  gameTime+=dt;updateDecay();
@@ -1199,7 +1215,7 @@ function frame(now){
  else md.style.display='none';
  $('info').innerHTML=info;
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').style.opacity=0}
- slow+=dt;if(slow>.3){slow=0;updateTdHud();{const b=biomeAt(Math.floor(P.x),Math.floor(P.z));if(b!==lastBiome){lastBiome=b;renderHotbar()}}if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
+ slow+=dt;if(slow>.3){slow=0;for(const m of machines)if(m.a.ports){const v=(m.x-P.x)**2+(m.z-P.z)**2<900;if(m.portsV!==v){m.portsV=v;for(const p of m.a.ports)p.visible=v}}updateTdHud();{const b=biomeAt(Math.floor(P.x),Math.floor(P.z));if(b!==lastBiome){lastBiome=b;renderHotbar()}}if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
  saveT+=dt;if(saveT>60){saveT=0;if(locked&&net.role!=='client')save()}
  pm('Zielen, Bauvorschau, HUD');netTick(dt);pm('Netzwerk');
  tdUpdate(dt);pm('Tower Defense');updateViewModel(dt);updateRadar(dt);updateCompass();pm('Kompass, Radar, Arm');renderer.info.reset();renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam);pm('Rendern (CPU)');perfEnd()}
@@ -1382,9 +1398,9 @@ function setupDefense(){if(td.path)return;const fx=-Math.sin(P.yaw),fz=-Math.cos
  let tw=machines.find(m=>m.type==='tower');if(!tw){placeBaseTower(ox,oz);tw=machines.find(m=>m.type==='tower')}if(tw){makePath(tw);toast('Basis und Angriffspfad eingerichtet');renderSettings()}}
 function renderSettings(){ $('tdsetup').innerHTML=td.path?'':`Dieser Spielstand hat noch keine Basis mit Angriffspfad. <button class="b sec" id="tdsetupb" ${net.role!=='solo'?'disabled':''}>Turmverteidigung hier einrichten</button> <span class="mut">(Turm 8 Blöcke vor dir, Pfad nach Norden)</span>`;
  const sb=$('tdsetupb');if(sb)sb.onclick=()=>{setupDefense();resume()};
- $('rsopts').innerHTML=RS_OPTS.map(n=>`<button class="rec ${n===RS?'on':''}" data-rs="${n}">${n} %</button>`).join('');
+ $('rsopts').innerHTML=RS_OPTS.map(n=>`<button class="rec ${n===RS?'on':''}" data-rs="${n}">${n?n+' %':'Auto'+(RS?'':' ('+autoRS+' %)')}</button>`).join('');
  $('rdopts').innerHTML=RD_OPTS.map(n=>`<button class="rec ${n===RD?'on':''}" data-rd="${n}">${n} Chunks <span class="mut">(${n*16} m)</span></button>`).join('')}
-$('rsopts').addEventListener('click',e=>{const b=e.target.closest('[data-rs]');if(!b)return;RS=+b.dataset.rs;try{localStorage.setItem('satiscraft-rs',RS)}catch(e){}applyRS();renderer.setSize(innerWidth,innerHeight);renderSettings();toast('Auflösung: '+RS+' %')});
+$('rsopts').addEventListener('click',e=>{const b=e.target.closest('[data-rs]');if(!b)return;RS=+b.dataset.rs;try{localStorage.setItem('satiscraft-rs',RS)}catch(e){}applyRS();renderer.setSize(innerWidth,innerHeight);renderSettings();toast('Auflösung: '+(RS?RS+' %':'automatisch'))});
 $('rdopts').addEventListener('click',e=>{const b=e.target.closest('[data-rd]');if(!b)return;setViewDist(+b.dataset.rd);renderSettings();toast('Sichtweite: '+RD+' Chunks')});
 renderSettings();
 function saveName(){try{localStorage.setItem('satiscraft-name',myName())}catch(e){}}
