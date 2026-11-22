@@ -705,6 +705,7 @@ addEventListener('keydown',e=>{
  if(panel){if(panel.kind==='build'&&e.code.startsWith('Digit')){const i=+e.code.slice(5)-1;if(i>=0&&i<CATS.length){buildCat=i;try{localStorage.setItem('satiscraft-cat',String(i))}catch(e){}renderPanel()}return}
   if(['Escape','KeyE','KeyI','KeyQ','Tab'].includes(e.code))closePanel();return}
  if(e.code==='F3'){e.preventDefault();if(!e.repeat)cyclePerf();return}
+ if(e.code==='F4'){e.preventDefault();if(!e.repeat)copyPerf();return}
  if(e.code==='Escape'&&e.repeat)return;
  if(!locked){if(e.code==='Escape'&&$('pause').classList.contains('on'))resume();return}
  if(e.code==='Escape')return pause();keys[e.code]=true;
@@ -1126,11 +1127,14 @@ function renderPerf(avg,js,sec){const el=$('perf'),col=perf.fps>=55?'ok':perf.fp
    if(top[0]==='Animation & Partikel')tips.push('Viele arbeitende Gebäude erzeugen Partikel.');
    if(ri.render.calls>900)tips.push('Sehr viele Draw Calls ('+ri.render.calls+') – Sichtweite senken.');
    if(perf.max>100)tips.push('Einzelne Ruckler bis '+perf.max.toFixed(0)+' ms (z. B. Speichern, Weltladen).')}
-  h+=tips.length?`<div class="tip">${tips.map(esc).join('<br>')}</div>`:'';h+='<div class="mut">F3: weiter / aus</div>'}
- el.innerHTML=h;
+  h+=tips.length?`<div class="tip">${tips.map(esc).join('<br>')}</div>`:'';h+='<div class="pfb"><button class="b sec" data-pcopy="1">Bericht kopieren (F4)</button><span class="mut">F3: weiter / aus</span></div>'}
+ el.innerHTML=h;perf.text=el.innerText.replace(/Bericht kopieren \(F4\)\s*F3: weiter \/ aus/,'').trim();
  if(perfMode===2){const c=$('pfg'),x=c.getContext('2d');x.clearRect(0,0,240,44);x.strokeStyle='#ffffff22';[16.7,33.3].forEach(v=>{const y=44-v;x.beginPath();x.moveTo(0,y);x.lineTo(240,y);x.stroke()});
   for(let i=0;i<240;i++){const v=perf.hist[(perf.hi+i)%240];x.fillStyle=v>33.4?'#ef5a4c':v>17.5?'#e8b04a':'#5fcf6f';x.fillRect(i,44-Math.min(44,v),1,Math.min(44,v))}}}
 $('perf').style.display=perfMode?'block':'none';
+function copyPerf(){if(!perf.text)return toast('Erst F3 drücken');const t='Satiscraft v'+GAME_VER+' – '+navigator.userAgent+'\n'+perf.text;
+ (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Leistungsbericht kopiert'),()=>toast('Kopieren nicht möglich'))}
+$('perf').addEventListener('pointerdown',e=>{if(e.target.closest('[data-pcopy]')){e.preventDefault();e.stopPropagation();copyPerf()}});
 // Warnsymbol über Gebäuden, die nicht arbeiten (Produktion, Miner, Geschütz ohne Munition)
 const warnMat=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d');
  x.fillStyle='#ffcc00';x.strokeStyle='#3a2a00';x.lineWidth=4;x.beginPath();x.moveTo(32,4);x.lineTo(61,58);x.lineTo(3,58);x.closePath();x.fill();x.stroke();
