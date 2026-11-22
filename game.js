@@ -6,7 +6,9 @@ const KEY='satiscraft-v1';
 const ITEMS={wood:['Holz','#9b6b3d'],dirt:['Erde','#7a5535'],stone:['Stein','#8d9094'],sand:['Sand','#e3d39a'],coal:['Kohle','#2b2b2e'],
  copper_ore:['Kupfererz','#c87533'],iron_ore:['Eisenerz','#c49a83'],gold_ore:['Golderz','#e8c33f'],titan_ore:['Titanerz','#6fd0d8'],
  iron_bar:['Eisenbarren','#c8ccd2'],copper_bar:['Kupferbarren','#e08a4a'],gold_bar:['Goldbarren','#ffd24a'],titan_bar:['Titanbarren','#a5eef4'],
- iron_plate:['Eisenplatte','#a9b0b8'],rod:['Eisenstange','#6f7780'],wire:['Draht','#d9783a'],steel:['Stahlbarren','#4f5862'],motor:['Motor','#3e6ea8'],circuit:['Schaltkreis','#3c9a4c']};
+ iron_plate:['Eisenplatte','#a9b0b8'],rod:['Eisenstange','#6f7780'],wire:['Draht','#d9783a'],steel:['Stahlbarren','#4f5862'],motor:['Motor','#3e6ea8'],circuit:['Schaltkreis','#3c9a4c'],
+ sandstone:['Sandstein','#d9c38a'],quartz_ore:['Quarzerz','#e9e4f2'],bauxite:['Bauxit','#b5562f'],planks:['Bretter','#c39a5f'],glass:['Glas','#bfe6f0'],concrete:['Beton','#b9bcbf'],
+ quartz:['Quarzkristall','#f4efff'],alu_bar:['Aluminiumbarren','#dfe4ea'],alu_sheet:['Alublech','#cfd8e2'],copper_sheet:['Kupferblech','#d9874f'],silicon:['Silizium','#5d6b8a'],frame:['Rahmen','#8a939c'],chip:['Mikrochip','#2f8f6a']};
 const BL=[null,
  {n:'Gras',t:[0,1,2],tier:0,time:.5,drop:'dirt'},
  {n:'Erde',t:[2,2,2],tier:0,time:.45,drop:'dirt'},
@@ -19,11 +21,24 @@ const BL=[null,
  {n:'Eisenvorkommen',t:[10,10,10],tier:2,time:1.9,drop:'iron_ore',ore:1},
  {n:'Goldvorkommen',t:[11,11,11],tier:3,time:2.2,drop:'gold_ore',ore:1},
  {n:'Titanvorkommen',t:[12,12,12],tier:4,time:2.8,drop:'titan_ore',ore:1},
- {n:'Grundgestein',t:[13,13,13],tier:99,time:1,drop:null}];
+ {n:'Grundgestein',t:[13,13,13],tier:99,time:1,drop:null},
+ {n:'Sandstein',t:[15,14,15],tier:1,time:1.2,drop:'sandstone'},
+ {n:'Schnee',t:[16,17,2],tier:0,time:.5,drop:'dirt'},
+ {n:'Kaktus',t:[19,18,19],tier:0,time:.5,drop:null},
+ {n:'Tannennadeln',t:[20,20,20],tier:0,time:.2,drop:null},
+ {n:'Birkenstamm',t:[22,21,22],tier:0,time:1.1,drop:'wood'},
+ {n:'Birkenlaub',t:[23,23,23],tier:0,time:.2,drop:null},
+ {n:'Rotgestein',t:[24,24,24],tier:1,time:1.3,drop:'stone'},
+ {n:'Quarzvorkommen',t:[25,25,25],tier:3,time:2.2,drop:'quartz_ore',ore:1},
+ {n:'Bauxitvorkommen',t:[26,26,26],tier:2,time:1.9,drop:'bauxite',ore:1},
+ {n:'Bretter',t:[27,27,27],tier:0,time:.8,drop:'planks'},
+ {n:'Glas',t:[28,28,28],tier:0,time:.4,drop:'glass',cut:1},
+ {n:'Beton',t:[29,29,29],tier:1,time:1.6,drop:'concrete'}];
+const NBL=BL.length-1;const isLog=id=>id===5||id===17,isLeaf=id=>id===6||id===16||id===18;
 const TOOLS=[{n:'Hand',s:1},{n:'Holzspitzhacke',s:1.7},{n:'Steinspitzhacke',s:2.4},{n:'Eisenspitzhacke',s:3.3},{n:'Stahlspitzhacke',s:4.6}];
 const TOOLREC=[null,{wood:5},{stone:8,wood:2},{iron_bar:6,wood:2},{steel:6,rod:3}];
 const GADGETS={radar:{n:'Erzradar',cost:{copper_bar:4,iron_bar:2},desc:'Zeigt Richtung und Entfernung zum nächsten Erz der gewählten Art (Taste F).'}};
-const PLACE=[['dirt',2],['stone',3],['sand',4],['wood',5]];
+const PLACE=[['dirt',2],['stone',3],['sand',4],['wood',5],['planks',22],['glass',23],['concrete',24],['sandstone',13]];
 const BUILD={
  workbench:{n:'Werkbank',w:2,d:2,h:2,cost:{wood:8},ins:[],outs:[],desc:'Stellt Spitzhacken her. [E] zum Öffnen.'},
  chest:{n:'Lagerkiste',w:1,d:1,h:1,cost:{wood:6},ins:'all',outs:[[0,1,0]],store:999,desc:'Nimmt Items aus jeder Richtung auf, Ausgang vorne (Dispenser, im Fenster einschalten). Fasst 999 Items.'},
@@ -34,20 +49,24 @@ const BUILD={
  bridge3:{n:'Lange Förderbandbrücke',w:1,d:5,h:2,cost:{iron_plate:6,rod:4},ins:[[0,-1,0]],outs:[[0,5,0]],bridge:1,desc:'Überspannt 3 Felder für mehrere Bänder oder Hindernisse.'},
  splitter:{n:'Splitter',w:1,d:1,h:1,cost:{iron_bar:2,copper_bar:2},ins:[[0,-1,0]],outs:[[0,1,0],[-1,0,1],[1,0,3]],router:1,desc:'1 Eingang hinten, 3 Ausgänge. Verteilt reihum. Kann direkt auf ein Band gesetzt werden.'},
  merger:{n:'Merger',w:1,d:1,h:1,cost:{iron_bar:2,copper_bar:2},ins:[[0,-1,0],[-1,0,3],[1,0,1]],outs:[[0,1,0]],router:1,desc:'3 Eingänge, 1 Ausgang vorne. Führt Bänder zusammen. Kann direkt auf ein Band gesetzt werden.'},
- smelter:{n:'Schmelzofen',w:2,d:2,h:2,cost:{stone:20,coal:5},ins:[[0,-1,0]],outs:[[1,2,0]],auto:1,desc:'Erz → Barren. Wählt das Rezept automatisch.'},
+ smelter:{n:'Schmelzofen',w:2,d:2,h:2,cost:{stone:20,coal:5},ins:[[0,-1,0]],outs:[[1,2,0]],auto:1,desc:'Erz → Barren, Sand → Glas. Wählt das Rezept automatisch.'},
  miner1:{n:'Miner Mk1',w:2,d:2,h:3,cost:{iron_bar:10,stone:15},ins:[],outs:[[0,2,0]],miner:1,tier:2,period:2.4,desc:'Auf Erzvorkommen setzen. Fördert Kohle, Kupfer, Eisen.'},
- constructor:{n:'Konstruktor',w:2,d:3,h:2,cost:{iron_bar:12,copper_bar:8},ins:[[0,-1,0]],outs:[[1,3,0]],desc:'Barren → Platten, Stangen, Draht.'},
- foundry:{n:'Gießerei',w:3,d:3,h:3,cost:{iron_plate:15,wire:10,stone:30},ins:[[0,-1,0],[2,-1,0]],outs:[[1,3,0]],desc:'Eisenerz + Kohle → Stahl. Zwei Eingänge.'},
- assembler:{n:'Monteur',w:3,d:3,h:3,cost:{steel:10,wire:20,iron_plate:10},ins:[[0,-1,0],[2,-1,0]],outs:[[1,3,0]],desc:'Motoren und Schaltkreise. Zwei Eingänge.'},
- miner2:{n:'Miner Mk2',w:2,d:2,h:3,cost:{titan_bar:10,motor:4,circuit:4},ins:[],outs:[[0,2,0]],miner:1,tier:4,period:1,desc:'Schneller, fördert alle Erze inkl. Gold und Titan.'}};
-const CATS=[['abbau','Abbau',['miner1','miner2']],['verarbeitung','Verarbeitung',['smelter','constructor','foundry','assembler']],
+ constructor:{n:'Konstruktor',w:2,d:3,h:2,cost:{iron_bar:12,copper_bar:8},ins:[[0,-1,0]],outs:[[1,3,0]],desc:'Platten, Stangen, Draht, Bretter, Beton, Bleche.'},
+ foundry:{n:'Gießerei',w:3,d:3,h:3,cost:{iron_plate:15,wire:10,stone:30},ins:[[0,-1,0],[2,-1,0]],outs:[[1,3,0]],desc:'Stahl und Silizium. Zwei Eingänge.'},
+ assembler:{n:'Monteur',w:3,d:3,h:3,cost:{steel:10,wire:20,iron_plate:10},ins:[[0,-1,0],[2,-1,0]],outs:[[1,3,0]],desc:'Motoren, Schaltkreise, Rahmen, Mikrochips. Zwei Eingänge.'},
+ miner2:{n:'Miner Mk2',w:2,d:2,h:3,cost:{titan_bar:10,motor:4,circuit:4},ins:[],outs:[[0,2,0]],miner:1,tier:4,period:1,desc:'Schneller, fördert alle Erze inkl. Gold und Titan.'},
+ miner3:{n:'Miner Mk3',w:2,d:2,h:3,cost:{alu_sheet:10,frame:6,chip:4},ins:[],outs:[[0,2,0]],miner:1,tier:4,period:.5,desc:'Doppelt so schnell wie Mk2, fördert alle Erze.'}};
+const CATS=[['abbau','Abbau',['miner1','miner2','miner3']],['verarbeitung','Verarbeitung',['smelter','constructor','foundry','assembler']],
  ['logistik','Logistik',['belt','splitter','merger','bridge1','bridge3']],['lager','Lager',['chest','container','warehouse']],['werkstatt','Werkstatt',['workbench']]];
 let buildCat=0;try{const c=+localStorage.getItem('satiscraft-cat');if(c>=0&&c<CATS.length)buildCat=c}catch(e){}
 const RECIPES={
- smelter:[{in:{iron_ore:1},out:{iron_bar:1},t:2},{in:{copper_ore:1},out:{copper_bar:1},t:2},{in:{gold_ore:1},out:{gold_bar:1},t:3},{in:{titan_ore:1},out:{titan_bar:1},t:4}],
- constructor:[{in:{iron_bar:2},out:{iron_plate:1},t:3},{in:{iron_bar:1},out:{rod:1},t:2},{in:{copper_bar:1},out:{wire:2},t:2}],
- foundry:[{in:{iron_ore:1,coal:1},out:{steel:1},t:3}],
- assembler:[{in:{steel:1,wire:4},out:{motor:1},t:6},{in:{gold_bar:1,wire:2},out:{circuit:1},t:5}]};
+ smelter:[{in:{iron_ore:1},out:{iron_bar:1},t:2},{in:{copper_ore:1},out:{copper_bar:1},t:2},{in:{gold_ore:1},out:{gold_bar:1},t:3},{in:{titan_ore:1},out:{titan_bar:1},t:4},
+  {in:{sand:1},out:{glass:1},t:2},{in:{quartz_ore:1},out:{quartz:1},t:3},{in:{bauxite:1},out:{alu_bar:1},t:4}],
+ constructor:[{in:{iron_bar:2},out:{iron_plate:1},t:3},{in:{iron_bar:1},out:{rod:1},t:2},{in:{copper_bar:1},out:{wire:2},t:2},
+  {in:{wood:1},out:{planks:2},t:1.5},{in:{stone:2},out:{concrete:1},t:3},{in:{alu_bar:1},out:{alu_sheet:1},t:3},{in:{copper_bar:2},out:{copper_sheet:1},t:3}],
+ foundry:[{in:{iron_ore:1,coal:1},out:{steel:1},t:3},{in:{sand:2,quartz:1},out:{silicon:1},t:4}],
+ assembler:[{in:{steel:1,wire:4},out:{motor:1},t:6},{in:{gold_bar:1,wire:2},out:{circuit:1},t:5},
+  {in:{iron_plate:2,rod:2},out:{frame:1},t:5},{in:{silicon:1,copper_sheet:1},out:{chip:1},t:6}]};
 const GOALS=[
  ['Baue Bäume mit der Hand ab und sammle 8 Holz.',()=>inv.wood>=8||count('workbench')],
  ['Räume eine ebene 2×2-Fläche frei und baue eine Werkbank (Q).',()=>count('workbench')],
@@ -64,6 +83,7 @@ const GOALS=[
  ['Stelle eine Stahlspitzhacke her – Titan wird abbaubar.',()=>tier>=4],
  ['Baue einen Monteur und stelle Motoren und Schaltkreise her.',()=>(stats.produced.motor||0)>0&&(stats.produced.circuit||0)>0],
  ['Baue einen Miner Mk2 auf ein Titanvorkommen.',()=>count('miner2')],
+ ['Erkunde Wüste und Ödland: Aus Bauxit und Quarz entstehen Alublech und Mikrochips – baue einen Miner Mk3.',()=>count('miner3')],
  ['Alle Meilensteine erreicht. Automatisiere deine Fabrik weiter!',()=>false]];
 
 // ---------- Zustand ----------
@@ -80,7 +100,7 @@ function get(x,y,z){if(y<0)return 12;if(y>=H)return 0;return colAt(x>>4,z>>4).d[
 function rawSet(x,y,z,id){if(y<0||y>=H)return;const c=colAt(x>>4,z>>4);c.d[(x&15)|((z&15)<<4)|(y<<8)]=id;c.ore=null}
 const getI=i=>get(kX(i),kY(i),kZ(i)),setI=(i,id)=>rawSet(kX(i),kY(i),kZ(i),id);
 function recordChange(i,id){changes.set(i,id);const ck=colKey(kX(i)>>4,kZ(i)>>4);let s=changesByCol.get(ck);if(!s)changesByCol.set(ck,s=new Set());s.add(i)}
-const opaque=id=>id>0&&id<200;
+const opaque=id=>id>0&&id<200&&id!==23;const solidId=id=>id>0&&id<200;
 const count=t=>machines.filter(m=>m.type===t).length;
 const add=(it,n)=>{inv[it]=(inv[it]||0)+n;if(inv[it]<=0)delete inv[it]};
 const has=c=>Object.keys(c).every(k=>(inv[k]||0)>=c[k]);
@@ -102,37 +122,71 @@ const rawH=(x,z)=>{const b=fbm(x/38,z/38,4),m=fbm(x/80+31.7,z/80+11.3,3);return 
 let spawnH=20,spawnVeins=[];const featCache=new Map();
 function computeSpawn(){let hc=0;for(let i=0;i<16;i++){const a=i/16*Math.PI*2;hc+=rawH(64+Math.round(Math.cos(a)*14),64+Math.round(Math.sin(a)*14))}spawnH=Math.round(hc/16);
  const sh=(x,z)=>surfaceH(x,z);spawnVeins=[[7,72,sh(72,68)-1,68,2.3],[9,76,sh(76,57)-1,57,2.4],[8,55,sh(55,71)-1,71,2.3],[3,58,sh(58,58),58,1.5]]}
-function surfaceH(x,z){let h=rawH(x,z);const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const t=dd/14;h=Math.round(h*t+spawnH*(1-t))}return h}
+// ---------- Biome: großräumiges Temperatur-/Feuchte-Rauschen; um den Startpunkt immer gemäßigt ----------
+const BIOMES=['Wiese','Birkenwald','Tundra','Wüste','Ödland'];
+const sstep=(a,b,v)=>{const t=Math.max(0,Math.min(1,(v-a)/(b-a)));return t*t*(3-2*t)};
+function climate(x,z){let t=.5+(fbm(x/320+500,z/320-200,3)-.5)*1.7,m=.5+(fbm(x/280-300,z/280+700,3)-.5)*1.7;
+ const d=Math.hypot(x-64,z-64);if(d<160){const k=Math.max(0,(d-90)/70);t=.5+(t-.5)*k;m=.5+(m-.5)*k}return[t,m]}
+const biomeOf=(t,m)=>t<.36?2:t>.64?(m<.5?3:4):(m>.62?1:0);
+function biomeAt(x,z){const[t,m]=climate(x,z);return biomeOf(t,m)}
+function surfaceH(x,z){return terrainAt(x,z)[0]}
+// Höhe und Biom in einem Durchgang (Klima nur einmal berechnen)
+function terrainAt(x,z){let h=rawH(x,z);const[t,m]=climate(x,z);
+ const cold=sstep(.42,.3,t),hot=sstep(.58,.7,t),dry=hot*sstep(.55,.45,m),bad=hot*sstep(.45,.55,m);
+ if(cold>0)h+=cold*fbm(x/60+9,z/60-4,3)*24;
+ if(dry>0)h=h+(15+fbm(x/22,z/22,2)*8-h)*dry*.85;
+ if(bad>0){const hb=h+Math.max(0,fbm(x/45-7,z/45+3,3)-.42)*70;h=h+(Math.floor(hb/4)*4-h)*bad}
+ h=Math.max(6,Math.min(H-6,Math.floor(h)));
+ const dx=x-64,dz=z-64,dd=Math.sqrt(dx*dx+dz*dz);if(dd<14){const tt=dd/14;h=Math.round(h*tt+spawnH*(1-tt))}return[h,biomeOf(t,m)]}
 // Erzadern und Bäume je Chunk; eine Spalte übernimmt auch die Teile, die aus Nachbar-Chunks hineinragen.
 const VEINS=[[7,.72,0,3],[8,.44,0,3],[9,.5,0,3],[10,.25,2,9],[11,.19,4,14]];
+const BVEINS=[[],[[7,.4,0,3]],[[11,.3,2,10],[9,.3,0,4]],[[20,.7,1,6],[10,.25,1,6]],[[21,.8,0,3],[8,.4,0,3]]];
+const TREE=['oak','birch','spruce','cactus',null];
 function chunkFeatures(fx,fz){const k=colKey(fx,fz);let f=featCache.get(k);if(f)return f;const rnd=mulberry(hashI(fx,fz,99));f={v:[],t:[]};
  for(const[id,dens,dmin,dvar]of VEINS){const n=Math.floor(dens)+(rnd()<dens%1?1:0);for(let i=0;i<n;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),h=surfaceH(x,z);
   let y=h-dmin-Math.floor(rnd()*dvar);if(id===11&&h>30&&rnd()<.6)y=h-1;f.v.push([id,x,Math.max(2,y),z,1.6+rnd()*1.4])}}
+ // Reihenfolge der Zufallszahlen wie zuvor (Basis-Adern, dann 2 Baumversuche), damit gemäßigte Gebiete unverändert bleiben.
  for(let i=0;i<2;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),th=4+Math.floor(rnd()*3),h=surfaceH(x,z);
-  if(Math.hypot(x-64,z-64)<6||h<=14||h>32)continue;f.t.push([x,h,z,th])}
+  if(Math.hypot(x-64,z-64)<6)continue;const b=biomeAt(x,z),ty=TREE[b];if(!ty)continue;
+  if(ty==='oak'||ty==='birch'){if(h<=14||h>32)continue}else if(ty==='cactus'){if(h<=14)continue}else if(h>48)continue;
+  f.t.push([x,h,z,ty==='spruce'?th+2:ty==='cactus'?th-2:th,ty])}
+ const cb=biomeAt(fx*16+8,fz*16+8);
+ for(const[id,dens,dmin,dvar]of BVEINS[cb]){const n=Math.floor(dens)+(rnd()<dens%1?1:0);for(let i=0;i<n;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),h=surfaceH(x,z);
+  f.v.push([id,x,Math.max(2,h-dmin-Math.floor(rnd()*dvar)),z,1.6+rnd()*1.4])}}
+ if(cb===1)for(let i=0;i<3;i++){const x=fx*16+Math.floor(rnd()*16),z=fz*16+Math.floor(rnd()*16),th=5+Math.floor(rnd()*3),h=surfaceH(x,z);
+  if(biomeAt(x,z)===1&&h>14&&h<=32)f.t.push([x,h,z,th,'birch'])}
  featCache.set(k,f);return f}
 function genCol(cx,cz){const c={cx,cz,d:new Uint8Array(16*16*H),m:[null,null,null,null],shown:false,leaf:false};cols.set(colKey(cx,cz),c);const d=c.d,x0=cx*16,z0=cz*16;
  const I=(x,y,z)=>(x-x0)|((z-z0)<<4)|(y<<8),inside=(x,y,z)=>x>=x0&&x<x0+16&&z>=z0&&z<z0+16&&y>=0&&y<H;
- for(let x=x0;x<x0+16;x++)for(let z=z0;z<z0+16;z++){const h=surfaceH(x,z);
-  for(let y=0;y<=h;y++){let id=y===0?12:y<h-3?3:y<h?2:1;if(h<=14&&y>=h-2)id=4;if(h>32&&y>=h-1)id=3;d[I(x,y,z)]=id}}
+ for(let x=x0;x<x0+16;x++)for(let z=z0;z<z0+16;z++){const[h,b]=terrainAt(x,z);
+  for(let y=0;y<=h;y++){let id;
+   if(y===0)id=12;
+   else if(b===3)id=y>=h-3?4:y>=h-7?13:3;
+   else if(b===4)id=y>=h-9?((y>>1)%3===0?13:19):3;
+   else{id=y<h-3?3:y<h?2:(b===2?14:1);if(h<=14&&y>=h-2)id=4;if(h>32&&y>=h-1&&b!==2)id=3}
+   d[I(x,y,z)]=id}}
  const vein=(id,vx,vy,vz,r)=>{const R=Math.ceil(r);for(let x=Math.max(vx-R,x0);x<=Math.min(vx+R,x0+15);x++)for(let z=Math.max(vz-R,z0);z<=Math.min(vz+R,z0+15);z++)for(let y=Math.max(1,vy-R);y<=Math.min(H-1,vy+R);y++){
-  const dd=Math.hypot(x-vx,(y-vy)*1.3,z-vz),p=I(x,y,z),cur=d[p];if(dd<r+hash3(x,y,z)*.5&&cur>=1&&cur<=4)d[p]=id}};
+  const dd=Math.hypot(x-vx,(y-vy)*1.3,z-vz),p=I(x,y,z),cur=d[p];if(dd<r+hash3(x,y,z)*.5&&((cur>=1&&cur<=4)||cur===13||cur===14||cur===19))d[p]=id}};
  const near=[];for(let fx=cx-1;fx<=cx+1;fx++)for(let fz=cz-1;fz<=cz+1;fz++)near.push(chunkFeatures(fx,fz));
  for(const f of near)for(const v of f.v)vein(...v);
  for(const v of spawnVeins)vein(...v);
- for(const f of near)for(const[tx,h,tz,th]of f.t){
-  for(let y=1;y<=th;y++)if(inside(tx,h+y,tz))d[I(tx,h+y,tz)]=5;
-  for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=th-1;ly<=th+2;ly++){const r=ly>th?1.3:2.4;if(Math.hypot(lx,lz)>r)continue;
-   const x=tx+lx,y=h+ly,z=tz+lz;if(inside(x,y,z)&&!d[I(x,y,z)])d[I(x,y,z)]=6}}
+ const put=(x,y,z,id,force)=>{if(inside(x,y,z)&&(force||!d[I(x,y,z)]))d[I(x,y,z)]=id};
+ for(const f of near)for(const[tx,h,tz,th,ty]of f.t){
+  if(ty==='cactus'){for(let y=1;y<=th;y++)put(tx,h+y,tz,15,true);continue}
+  const log=ty==='birch'?17:5,leaf=ty==='birch'?18:ty==='spruce'?16:6;
+  for(let y=1;y<=th;y++)put(tx,h+y,tz,log,true);
+  if(ty==='spruce'){for(let ly=2;ly<=th+1;ly++){const r=ly>th?.5:Math.max(.9,(th+1-ly)*.42+.4);for(let lx=-3;lx<=3;lx++)for(let lz=-3;lz<=3;lz++)if(Math.hypot(lx,lz)<=r&&!(lx===0&&lz===0&&ly<=th))put(tx+lx,h+ly,tz+lz,leaf)}continue}
+  const rr=ty==='birch'?1.7:2.4;
+  for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=th-1;ly<=th+2;ly++){const r=ly>th?1.3:rr;if(Math.hypot(lx,lz)>r)continue;put(tx+lx,h+ly,tz+lz,leaf)}}
  const ch=changesByCol.get(colKey(cx,cz));if(ch){for(const i of ch)d[I(kX(i),kY(i),kZ(i))]=changes.get(i);c.leaf=true}
  return c}
 
 // ---------- Texturatlas ----------
 function makeAtlas(){
- const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');const r=mulberry(99);
+ const c=document.createElement('canvas');c.width=128;c.height=64;const g=c.getContext('2d');const r=mulberry(99);
  const hex=(s,v)=>{const n=parseInt(s.slice(1),16);const f=k=>Math.max(0,Math.min(255,((n>>k)&255)*v|0));return`rgb(${f(16)},${f(8)},${f(0)})`};
- const fill=(t,base,var_)=>{const ox=(t%4)*16,oy=Math.floor(t/4)*16;for(let x=0;x<16;x++)for(let y=0;y<16;y++){g.fillStyle=hex(base,1-var_/2+r()*var_);g.fillRect(ox+x,oy+y,1,1)}return[ox,oy]};
- const spots=(t,col,n)=>{const ox=(t%4)*16,oy=Math.floor(t/4)*16;for(let i=0;i<n;i++){const x=1+Math.floor(r()*13),y=1+Math.floor(r()*13);g.fillStyle=hex(col,.8+r()*.4);g.fillRect(ox+x,oy+y,2+(r()<.4),2);}};
+ const fill=(t,base,var_)=>{const ox=(t%8)*16,oy=Math.floor(t/8)*16;for(let x=0;x<16;x++)for(let y=0;y<16;y++){g.fillStyle=hex(base,1-var_/2+r()*var_);g.fillRect(ox+x,oy+y,1,1)}return[ox,oy]};
+ const spots=(t,col,n)=>{const ox=(t%8)*16,oy=Math.floor(t/8)*16;for(let i=0;i<n;i++){const x=1+Math.floor(r()*13),y=1+Math.floor(r()*13);g.fillStyle=hex(col,.8+r()*.4);g.fillRect(ox+x,oy+y,2+(r()<.4),2);}};
  fill(0,'#5fa04a',.25);
  let [ox,oy]=fill(1,'#7a5535',.3);for(let x=0;x<16;x++){const hh=3+Math.floor(r()*3);for(let y=0;y<hh;y++){g.fillStyle=hex('#5fa04a',.85+r()*.3);g.fillRect(ox+x,oy+y,1,1)}}
  fill(2,'#7a5535',.3);fill(3,'#8d9094',.22);fill(4,'#e3d39a',.15);
@@ -142,6 +196,21 @@ function makeAtlas(){
  fill(8,'#8d9094',.22);spots(8,'#1e1e22',9);fill(9,'#8d9094',.22);spots(9,'#d9772e',8);
  fill(10,'#8d9094',.22);spots(10,'#d7a98e',8);fill(11,'#8d9094',.22);spots(11,'#f3cd3a',8);
  fill(12,'#5e6a72',.22);spots(12,'#7fe6ee',8);fill(13,'#3a3a3d',.4);
+ [ox,oy]=fill(14,'#d9c38a',.12);for(const yy of[4,9,13]){g.fillStyle='#c4ab72';g.fillRect(ox,oy+yy,16,1)}fill(15,'#e0cc94',.1);
+ fill(16,'#f2f6fa',.06);[ox,oy]=fill(17,'#7a5535',.3);for(let x=0;x<16;x++){const hh=3+Math.floor(r()*3);for(let y=0;y<hh;y++){g.fillStyle=hex('#f2f6fa',.92+r()*.08);g.fillRect(ox+x,oy+y,1,1)}}
+ [ox,oy]=fill(18,'#4f8f3a',.18);for(let x=1;x<16;x+=4){g.fillStyle='#2f5f22';g.fillRect(ox+x,oy,1,16)}for(let i=0;i<10;i++){g.fillStyle='#e8e3c4';g.fillRect(ox+Math.floor(r()*16),oy+Math.floor(r()*16),1,1)}
+ [ox,oy]=fill(19,'#5a9a44',.15);g.strokeStyle='#2f5f22';g.strokeRect(ox+2.5,oy+2.5,11,11);
+ fill(20,'#2f5e3a',.4);
+ [ox,oy]=fill(21,'#e9e6dc',.08);for(let i=0;i<9;i++){g.fillStyle='#2b2b2b';g.fillRect(ox+Math.floor(r()*14),oy+Math.floor(r()*16),2+Math.floor(r()*2),1)}
+ [ox,oy]=fill(22,'#d8cfb6',.12);g.strokeStyle='#a8996f';g.strokeRect(ox+3.5,oy+3.5,9,9);
+ fill(23,'#8fc25a',.4);
+ [ox,oy]=fill(24,'#b5562f',.12);for(let y=0;y<16;y+=4){g.fillStyle=y%8?'#c9724a':'#9a4527';g.fillRect(ox,oy+y,16,2)}
+ fill(25,'#8d9094',.22);spots(25,'#f4f0ff',8);fill(26,'#8d9094',.22);spots(26,'#b84f28',9);
+ [ox,oy]=fill(27,'#c39a5f',.12);for(const yy of[0,4,8,12]){g.fillStyle='#8f6a3a';g.fillRect(ox,oy+yy,16,1)}for(const[xx,yy]of[[5,0],[11,4],[3,8],[9,12]]){g.fillStyle='#8f6a3a';g.fillRect(ox+xx,oy+yy,1,4)}
+ // Glas: Rahmen deckend, Mitte durchsichtig (Alpha-Cutout)
+ ox=(28%8)*16;oy=Math.floor(28/8)*16;g.clearRect(ox,oy,16,16);g.fillStyle='#d9f2f8';g.fillRect(ox,oy,16,1);g.fillRect(ox,oy+15,16,1);g.fillRect(ox,oy,1,16);g.fillRect(ox+15,oy,1,16);
+ g.fillStyle='rgba(230,250,255,.95)';g.fillRect(ox+3,oy+3,1,3);g.fillRect(ox+4,oy+2,2,1);
+ fill(29,'#b9bcbf',.08);
  const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;return t}
 function arrowTex(col,belt){const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d');
  if(belt){g.fillStyle='#2a2d31';g.fillRect(0,0,32,32);g.strokeStyle='#4b5058';g.lineWidth=4;g.beginPath();g.moveTo(6,6);g.lineTo(16,18);g.lineTo(26,6);g.stroke();}
@@ -156,7 +225,7 @@ const scene=new THREE.Scene();scene.background=new THREE.Color(0x9fd4f5);scene.f
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.05,220);camera.rotation.order='YXZ';
 scene.add(new THREE.HemisphereLight(0xe8f3ff,0x6b5a40,.8));const sun=new THREE.DirectionalLight(0xffffff,.65);sun.position.set(.5,1,.3);scene.add(sun);
 addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();viewCam.aspect=camera.aspect;viewCam.updateProjectionMatrix()});
-const terrainMat=new THREE.MeshBasicMaterial({map:makeAtlas(),vertexColors:true});
+const terrainMat=new THREE.MeshBasicMaterial({map:makeAtlas(),vertexColors:true,alphaTest:.5});
 
 // ---------- Meshing ----------
 const FACES=[];
@@ -172,15 +241,15 @@ function buildChunk(cx,cy,cz){const c=cols.get(colKey(cx,cz));if(!c)return;
  const pos=[],col=[],uv=[],ind=[];let vc=0;const p1=[0,0,0],p2=[0,0,0],p3=[0,0,0],x0=cx*CS,z0=cz*CS;
  for(let y=cy*CS;y<cy*CS+CS;y++)for(let z=z0;z<z0+CS;z++)for(let x=x0;x<x0+CS;x++){
   const id=c.d[(x-x0)|((z-z0)<<4)|(y<<8)];if(!id||id>=200)continue;const bd=BL[id];
-  for(const f of FACES){const nx=x+f.n[0],ny=y+f.n[1],nz=z+f.n[2];if(opaque(get(nx,ny,nz)))continue;
-   const tile=bd.t[f.k],tu=(tile%4)/4,tv=1-(Math.floor(tile/4)+1)/4;const ao=[];
+  for(const f of FACES){const nx=x+f.n[0],ny=y+f.n[1],nz=z+f.n[2];const nb=get(nx,ny,nz);if(opaque(nb)||(bd.cut&&nb===id))continue;
+   const tile=bd.t[f.k],tu=(tile%8)/8,tv=1-(Math.floor(tile/8)+1)/4;const ao=[];
    for(let i=0;i<4;i++){const cc=f.cs[i];pos.push(x+cc[0],y+cc[1],z+cc[2]);
     const du=cc[f.u]?1:-1,dv=cc[f.v]?1:-1;
     p1[0]=p2[0]=p3[0]=nx;p1[1]=p2[1]=p3[1]=ny;p1[2]=p2[2]=p3[2]=nz;p1[f.u]+=du;p2[f.v]+=dv;p3[f.u]+=du;p3[f.v]+=dv;
     const s1=opaque(get(p1[0],p1[1],p1[2]))?1:0,s2=opaque(get(p2[0],p2[1],p2[2]))?1:0,s3=opaque(get(p3[0],p3[1],p3[2]))?1:0;
     const a=(s1&&s2)?0:3-(s1+s2+s3);ao.push(a);const br=AOL[a]*f.sh;col.push(br,br,br);
     let U,V;if(f.a===1){U=cc[0];V=cc[2]}else if(f.a===0){U=cc[2];V=cc[1]}else{U=cc[0];V=cc[1]}
-    uv.push(tu+.002+U*.246,tv+.002+V*.246)}
+    uv.push(tu+.001+U*.123,tv+.002+V*.246)}
    if(ao[0]+ao[2]>=ao[1]+ao[3])ind.push(vc,vc+1,vc+2,vc,vc+2,vc+3);else ind.push(vc+1,vc+2,vc+3,vc+1,vc+3,vc);vc+=4}}
  if(c.m[cy]){scene.remove(c.m[cy]);c.m[cy].geometry.dispose();c.m[cy]=null}
  if(!vc)return;
@@ -214,16 +283,16 @@ function leafSupported(x,y,z){
  for(let d=0;d<LEAF_REACH&&front.length;d++){const next=[];
   for(const[cx,cy,cz]of front)for(const[dx,dy,dz]of N6){const nx=cx+dx,ny=cy+dy,nz=cz+dz;
    if(ny<0||ny>=H)continue;const id=get(nx,ny,nz);
-   if(id===LOG)return true;if(id!==LEAF)continue;const k=idx(nx,ny,nz);if(!seen.has(k)){seen.add(k);next.push([nx,ny,nz])}}
+   if(isLog(id))return true;if(!isLeaf(id))continue;const k=idx(nx,ny,nz);if(!seen.has(k)){seen.add(k);next.push([nx,ny,nz])}}
   front=next}
  return false}
 const N6=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
 function scheduleDecay(x,y,z){const k=idx(x,y,z);if(!decay.has(k))decay.set(k,gameTime+.3+Math.random()*4)}
 function checkLeavesAround(x,y,z){const r=LEAF_REACH+1;
  for(let lx=x-r;lx<=x+r;lx++)for(let ly=Math.max(0,y-r);ly<=Math.min(H-1,y+r);ly++)for(let lz=z-r;lz<=z+r;lz++)
-  if(get(lx,ly,lz)===LEAF&&!decay.has(idx(lx,ly,lz))&&!leafSupported(lx,ly,lz))scheduleDecay(lx,ly,lz)}
-function checkLeavesInCol(c){for(let p=0;p<c.d.length;p++)if(c.d[p]===LEAF){const x=c.cx*16+(p&15),z=c.cz*16+((p>>4)&15),y=p>>8;if(!leafSupported(x,y,z))scheduleDecay(x,y,z)}}
-function updateDecay(){if(net.role==='client')return;let n=0;for(const[k,t]of decay){if(t>gameTime)continue;decay.delete(k);if(getI(k)!==LEAF)continue;
+  if(isLeaf(get(lx,ly,lz))&&!decay.has(idx(lx,ly,lz))&&!leafSupported(lx,ly,lz))scheduleDecay(lx,ly,lz)}
+function checkLeavesInCol(c){for(let p=0;p<c.d.length;p++)if(isLeaf(c.d[p])){const x=c.cx*16+(p&15),z=c.cz*16+((p>>4)&15),y=p>>8;if(!leafSupported(x,y,z))scheduleDecay(x,y,z)}}
+function updateDecay(){if(net.role==='client')return;let n=0;for(const[k,t]of decay){if(t>gameTime)continue;decay.delete(k);if(!isLeaf(getI(k)))continue;
  const x=kX(k),z=kZ(k),y=kY(k);if(leafSupported(x,y,z))continue;setBlock(x,y,z,0,true);if(++n>=8)break}}
 
 // ---------- Modelle ----------
@@ -263,7 +332,7 @@ function model(type,ghost){
  if(type==='chest'){bx(g,C(0x8b5a2b),.86,.6,.86,0,0,0);const lid=new THREE.Group();lid.position.set(0,.6,-.45);bx(lid,C(0x6b4220),.9,.2,.9,0,0,.45);bx(lid,C(0xd8b04a),.16,.18,.04,0,-.1,.9);g.add(lid);a.lid=lid}
  if(type==='smelter'){bx(g,C(0x3b3f44),1.95,.25,1.95,0,0,0);bx(g,C(0x8c8f93),1.7,1.25,1.7,0,.25,0);a.glow=bx(g,GL(0xff7a1a),.8,.45,.06,0,.45,.86);
   bx(g,C(0x5d6166),1.8,.15,1.8,0,1.5,0);bx(g,C(0x55595e),.42,1,.42,-.5,1.65,-.5);bx(g,C(0x55595e),.5,.3,.3,-.5,.3,-.95);a.emit.push({p:[-.5,2.7,-.5],k:'smoke'})}
- if(def.miner){const hc=type==='miner1'?0xe8892b:0x7b5cd6;for(const sx of[-.8,.8])for(const sz of[-.8,.8])bx(g,C(0x4a4f55),.2,2.6,.2,sx,0,sz);
+ if(def.miner){const hc=type==='miner1'?0xe8892b:type==='miner2'?0x7b5cd6:0x2fb3a0;for(const sx of[-.8,.8])for(const sz of[-.8,.8])bx(g,C(0x4a4f55),.2,2.6,.2,sx,0,sz);
   a.house=bx(g,C(hc),1.5,.9,1.5,0,1.6,0);bx(g,C(0x33373c),1.65,.12,1.65,0,2.5,0);bx(g,C(hc),.3,.35,.3,.45,2.62,.45);
   const dr=new THREE.Group();bx(dr,C(0x9aa1a8),.36,1.4,.36,0,.2,0,CYL);const tip=bx(dr,C(0x6d747b),.55,.6,.55,0,-.4,0,CONE);tip.rotation.x=Math.PI;
   for(let i=0;i<4;i++){const f=bx(dr,C(0x6d747b),.6,.08,.1,0,.4+i*.3,0);f.rotation.y=i*.8}g.add(dr);a.drill=dr;
@@ -290,7 +359,7 @@ function checkPlace(type,ox,oy,oz,rot,ignoreP){
  const def=BUILD[type];const cells=cellsOf(def,ox,oy,oz,rot);
  for(const c of cells){if(!isXZ(c.x)||!isXZ(c.z)||c.y<1||c.y>=H)return'Außerhalb der Welt';
   if(get(c.x,c.y,c.z)&&!(def.router&&get(c.x,c.y,c.z)===BELT))return'Platz blockiert – Blöcke wegräumen';
-  if(c.base&&!opaque(get(c.x,c.y-1,c.z)))return'Fläche nicht eben – Boden fehlt'}
+  if(c.base&&!solidId(get(c.x,c.y-1,c.z)))return'Fläche nicht eben – Boden fehlt'}
  const px0=Math.floor(P.x-.3),px1=Math.floor(P.x+.3),pz0=Math.floor(P.z-.3),pz1=Math.floor(P.z+.3),py0=Math.floor(P.y),py1=Math.floor(P.y+1.79);
  if(!ignoreP&&cells.some(c=>c.x>=px0&&c.x<=px1&&c.z>=pz0&&c.z<=pz1&&c.y>=py0&&c.y<=py1))return'Du stehst im Weg';
  if(!has(def.cost))return'Zu wenig Ressourcen';return''}
@@ -488,7 +557,7 @@ function panelAct(m,act,arg){
  if(act==='takeall'){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={}}}
 function renderHotbar(){
  $('hotbar').innerHTML=PLACE.map(([it],i)=>`<div class="slot ${i===selSlot?'sel':''}"><span class="k">${i+1}</span><span class="sw" style="background:${ITEMS[it][1]}"></span><span class="n">${inv[it]||0}</span><span class="l">${ITEMS[it][0]}</span></div>`).join('');
- $('tool').innerHTML=`Werkzeug: <b>${TOOLS[tier].n}</b>`}
+ $('tool').innerHTML=`Werkzeug: <b>${TOOLS[tier].n}</b> · Biom: <b>${BIOMES[biomeAt(Math.floor(P.x),Math.floor(P.z))]}</b>`}
 function renderGoal(){while(net.role!=='client'&&goal<GOALS.length-1&&GOALS[goal][1]()){goal++;if(goal>0)toast('Meilenstein erreicht!')}
  $('goal').innerHTML=`<b>Meilenstein ${Math.min(goal+1,GOALS.length-1)} / ${GOALS.length-1}</b>${GOALS[goal][0]}`}
 
@@ -538,7 +607,7 @@ function tryPlace(rotOverride){if(!place)return null;if(place.err){toast(place.e
 function doBuild(type,ox,oy,oz,rot){const def=BUILD[type];
  if(def.router){const ob=belts.get(idx(ox,oy,oz));if(ob)removeBuilding(ob)}
  for(const k in def.cost)add(k,-def.cost[k]);return createMachine(type,ox,oy,oz,rot)}
-function doMine(x,y,z,id){const bd=BL[id];setBlock(x,y,z,0,true);if(id===LOG||id===LEAF)checkLeavesAround(x,y,z);reserves.delete(idx(x,y,z));if(bd.drop)add(bd.drop,bd.ore?2:1)}
+function doMine(x,y,z,id){const bd=BL[id];setBlock(x,y,z,0,true);if(isLog(id)||isLeaf(id))checkLeavesAround(x,y,z);reserves.delete(idx(x,y,z));if(bd.drop)add(bd.drop,bd.ore?2:1)}
 // Shift + Ziehen: Bänder folgen der Zugrichtung; das vorige Band wird zum neuen hin ausgerichtet (Kurven).
 let lastBeltPos=null;
 function setBeltDir(b,d){b.dir=d;b.g.rotation.y=-d*Math.PI/2;slopesDirty=true;if(net.role==='host')netEmit({t:'bdir',i:idx(b.x,b.y,b.z),d})}
@@ -570,7 +639,7 @@ function sanitize(d){
  // Spielstände vor der endlosen Welt (v1) nutzten Schlüssel x+z*128+y*16384 – umrechnen.
  const conv=d.v===2?(i=>isKey(i)?i:-1):(i=>isInt(i,0,128*64*128-1)?idx(i%128,Math.floor(i/16384),Math.floor(i/128)%128):-1);
  const o={seed:d.seed,changes:[],res:[],machines:[],belts:[]};
- for(const c of arr(d.changes))if(Array.isArray(c)&&isInt(c[1],0,12)){const k=conv(c[0]);if(k>=0&&kY(k)<H)o.changes.push([k,c[1]])}
+ for(const c of arr(d.changes))if(Array.isArray(c)&&isInt(c[1],0,NBL)){const k=conv(c[0]);if(k>=0&&kY(k)<H)o.changes.push([k,c[1]])}
  for(const c of arr(d.res))if(Array.isArray(c)&&isInt(c[1],1,RESERVE)){const k=conv(c[0]);if(k>=0)o.res.push([k,c[1]])}
  o.inv=cleanBag(d.inv,1e9);o.gadgets={radar:!!(d.gadgets&&d.gadgets.radar===true)};o.tier=isInt(d.tier,0,4)?d.tier:0;o.goal=isInt(d.goal,0,GOALS.length-1)?d.goal:0;
  const st=d.stats&&typeof d.stats==='object'?d.stats:{};o.stats={delivered:isInt(st.delivered,0,1e12)?st.delivered:0,produced:cleanBag(st.produced,1e12)};
@@ -627,9 +696,9 @@ function drawItems(){let n=0;for(const b of belts.values()){const[dx,dz]=DIRS[b.
  itemMesh.count=n;itemMesh.instanceMatrix.needsUpdate=true;if(itemMesh.instanceColor)itemMesh.instanceColor.needsUpdate=true}
 
 // ---------- Erzradar (F): Richtung zum nächsten Block der gewählten Erzart ----------
-const RADAR=[7,8,9,10,11],RADAR_R=10;let radarSel=-1,radarT=0,radarHit=null;
+const RADAR=[7,8,9,10,11,20,21],RADAR_R=10;let radarSel=-1,radarT=0,radarHit=null;
 try{const raw=localStorage.getItem('satiscraft-radar');const v=raw===null?-1:+raw;if(Number.isInteger(v)&&v>=-1&&v<RADAR.length)radarSel=v}catch(e){}
-function oreIndex(c){if(c.ore)return c.ore;const o={};for(let p=0;p<c.d.length;p++){const v=c.d[p];if(v>=7&&v<=11)(o[v]||(o[v]=[])).push(p)}return c.ore=o}
+function oreIndex(c){if(c.ore)return c.ore;const o={};for(let p=0;p<c.d.length;p++){const v=c.d[p];if(BL[v]&&BL[v].ore)(o[v]||(o[v]=[])).push(p)}return c.ore=o}
 function radarScan(){radarHit=null;if(radarSel<0)return;const id=RADAR[radarSel],ex=P.x,ey=P.y+1.6,ez=P.z,pcx=Math.floor(ex)>>4,pcz=Math.floor(ez)>>4;let best=Infinity,gen=0;
  const ring=[];for(let dx=-RADAR_R;dx<=RADAR_R;dx++)for(let dz=-RADAR_R;dz<=RADAR_R;dz++)if(dx*dx+dz*dz<=RADAR_R*RADAR_R)ring.push([dx,dz]);ring.sort((a,b)=>a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1]);
  for(const[dx,dz]of ring){const cx=pcx+dx,cz=pcz+dz,x0=cx*16,z0=cz*16;
@@ -679,7 +748,7 @@ function updateViewModel(dt){
  vmPivot.rotation.set(.1-Math.max(0,sw)*1.05-pu*.4,.05+sw*.1,0)}
 
 // ---------- Hauptschleife ----------
-let last=performance.now(),slow=0,saveT=0,time=0;
+let lastBiome=-1,last=performance.now(),slow=0,saveT=0,time=0;
 function frame(now){
  requestAnimationFrame(frame);let dt=Math.min(.05,(now-last)/1000);last=now;time+=dt;
  if(locked)movePlayer(dt);
@@ -700,7 +769,7 @@ function frame(now){
  updateParts(dt);
  gameTime+=dt;updateDecay();
  let n=0;for(const k of dirty){dirty.delete(k);const cy=k%4,ck=(k-cy)/4,cx=Math.floor(ck/131072)-65536,cz=ck%131072-65536;buildChunk(cx,cy,cz);if(++n>=8)break}
- stream(dt,2,1);
+ stream(dt,1,1);
  // Ziel & Abbau
  const h=locked&&!buildType?raycast(6):null;let info='';
  if(h){let tgt=null,nm='',sub='';
@@ -731,7 +800,7 @@ function frame(now){
  else md.style.display='none';
  $('info').innerHTML=info;
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').style.opacity=0}
- slow+=dt;if(slow>.3){slow=0;if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
+ slow+=dt;if(slow>.3){slow=0;{const b=biomeAt(Math.floor(P.x),Math.floor(P.z));if(b!==lastBiome){lastBiome=b;renderHotbar()}}if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
  saveT+=dt;if(saveT>60){saveT=0;if(locked&&net.role!=='client')save()}
  netTick(dt);
  updateViewModel(dt);updateRadar(dt);renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam)}
@@ -813,7 +882,7 @@ function clientRecv(d){if(!d||typeof d!=='object')return;
   seen.add(p.id);setAvatar(p.id,p.x,p.y,p.z,p.yaw,typeof p.name==='string'?p.name.slice(0,16):'Spieler')}
   for(const id of[...avatars.keys()])if(!seen.has(id))removeAvatar(id);updateCoopUI()}}
 function applyEvent(e){if(!e||typeof e!=='object')return;
- if(e.t==='blk'&&isKey(e.i)&&kY(e.i)<H&&isInt(e.id,0,12)){const i=e.i,cur=getI(i);if(cur===MACH||cur===BELT)return;setBlock(kX(i),kY(i),kZ(i),e.id,true);reserves.delete(i)}
+ if(e.t==='blk'&&isKey(e.i)&&kY(e.i)<H&&isInt(e.id,0,NBL)){const i=e.i,cur=getI(i);if(cur===MACH||cur===BELT)return;setBlock(kX(i),kY(i),kZ(i),e.id,true);reserves.delete(i)}
  else if(e.t==='build'&&typeof e.type==='string'&&own(BUILD,e.type)&&isXZ(e.x)&&isInt(e.y,1,H-1)&&isXZ(e.z)&&isInt(e.r,0,3)){if(fits(e.type,e.x,e.y,e.z,e.r))createMachine(e.type,e.x,e.y,e.z,e.r)}
  else if(e.t==='rm'&&isKey(e.i)){const t=belts.get(e.i)||machineAt.get(e.i);if(t)removeBuilding(t)}
  else if(e.t==='bdir'&&isKey(e.i)&&isInt(e.d,0,3)){const b=belts.get(e.i);if(b)setBeltDir(b,e.d)}}
