@@ -76,7 +76,7 @@ const isKey=i=>Number.isInteger(i)&&i>=0&&i<ZS*ZS*64,isXZ=v=>Number.isInteger(v)
 const cols=new Map(),changesByCol=new Map();const colKey=(cx,cz)=>(cx+65536)*131072+(cz+65536);
 function colAt(cx,cz){return cols.get(colKey(cx,cz))||genCol(cx,cz)}
 function get(x,y,z){if(y<0)return 12;if(y>=H)return 0;return colAt(x>>4,z>>4).d[(x&15)|((z&15)<<4)|(y<<8)]}
-function rawSet(x,y,z,id){if(y<0||y>=H)return;colAt(x>>4,z>>4).d[(x&15)|((z&15)<<4)|(y<<8)]=id}
+function rawSet(x,y,z,id){if(y<0||y>=H)return;const c=colAt(x>>4,z>>4);c.d[(x&15)|((z&15)<<4)|(y<<8)]=id;c.ore=null}
 const getI=i=>get(kX(i),kY(i),kZ(i)),setI=(i,id)=>rawSet(kX(i),kY(i),kZ(i),id);
 function recordChange(i,id){changes.set(i,id);const ck=colKey(kX(i)>>4,kZ(i)>>4);let s=changesByCol.get(ck);if(!s)changesByCol.set(ck,s=new Set());s.add(i)}
 const opaque=id=>id>0&&id<200;
@@ -501,6 +501,7 @@ addEventListener('keydown',e=>{
  if(e.code==='KeyQ'){if(buildType){buildType=null}else openPanel('build')}
  if(e.code==='KeyI'||e.code==='Tab')openPanel('inv');
  if(e.code==='KeyR'&&buildType)rotOff=(rotOff+1)%4;
+ if(e.code==='KeyF')cycleRadar(e.shiftKey);
  if(e.code==='KeyE'){const h=raycast(6);if(h&&h.id===MACH){const m=machineAt.get(idx(h.x,h.y,h.z));if(m&&m.type!=='belt'&&!BUILD[m.type].bridge&&!BUILD[m.type].router){buildType=null;openPanel('machine',m)}}}});
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',releaseMouse);
@@ -622,6 +623,28 @@ function drawItems(){let n=0;for(const b of belts.values()){const[dx,dz]=DIRS[b.
    tmpM.makeTranslation(tmpV.x,tmpV.y,tmpV.z);itemMesh.setMatrixAt(n,tmpM);itemMesh.setColorAt(n,itemCol[item]);n++}}
  itemMesh.count=n;itemMesh.instanceMatrix.needsUpdate=true;if(itemMesh.instanceColor)itemMesh.instanceColor.needsUpdate=true}
 
+// ---------- Erzradar (F): Richtung zum nächsten Block der gewählten Erzart ----------
+const RADAR=[7,8,9,10,11],RADAR_R=10;let radarSel=-1,radarT=0,radarHit=null;
+try{const v=+localStorage.getItem('satiscraft-radar');if(v>=-1&&v<RADAR.length)radarSel=v}catch(e){}
+function oreIndex(c){if(c.ore)return c.ore;const o={};for(let p=0;p<c.d.length;p++){const v=c.d[p];if(v>=7&&v<=11)(o[v]||(o[v]=[])).push(p)}return c.ore=o}
+function radarScan(){radarHit=null;if(radarSel<0)return;const id=RADAR[radarSel],ex=P.x,ey=P.y+1.6,ez=P.z,pcx=Math.floor(ex)>>4,pcz=Math.floor(ez)>>4;let best=Infinity,gen=0;
+ const ring=[];for(let dx=-RADAR_R;dx<=RADAR_R;dx++)for(let dz=-RADAR_R;dz<=RADAR_R;dz++)if(dx*dx+dz*dz<=RADAR_R*RADAR_R)ring.push([dx,dz]);ring.sort((a,b)=>a[0]*a[0]+a[1]*a[1]-b[0]*b[0]-b[1]*b[1]);
+ for(const[dx,dz]of ring){const cx=pcx+dx,cz=pcz+dz,x0=cx*16,z0=cz*16;
+  const nx=Math.max(x0,Math.min(ex,x0+16))-ex,nz=Math.max(z0,Math.min(ez,z0+16))-ez;if(nx*nx+nz*nz>=best)continue;
+  let c=cols.get(colKey(cx,cz));if(!c){if(gen>=3)continue;c=genCol(cx,cz);gen++}
+  const l=oreIndex(c)[id];if(!l)continue;
+  for(const p of l){const x=x0+(p&15)+.5,z=z0+((p>>4)&15)+.5,y=(p>>8)+.5,d=(x-ex)**2+(y-ey)**2+(z-ez)**2;if(d<best){best=d;radarHit={x,y,z,d:Math.sqrt(d)}}}}}
+function updateRadar(dt){const el=$('radar');if(radarSel<0){el.style.display='none';return}el.style.display='flex';
+ radarT-=dt;if(radarT<=0){radarT=.3;radarScan()}const id=RADAR[radarSel],bd=BL[id];
+ $('rname').textContent=bd.n.replace('vorkommen','');$('rdot').style.background=ITEMS[bd.drop][1];
+ if(!radarHit){$('rinfo').textContent='Nicht im Umkreis ('+RADAR_R*16+' m)';$('rarrow').style.opacity=.25;return}
+ const dx=radarHit.x-P.x,dz=radarHit.z-P.z,fx=-Math.sin(P.yaw),fz=-Math.cos(P.yaw),rx=Math.cos(P.yaw),rz=-Math.sin(P.yaw);
+ const ang=Math.atan2(dx*rx+dz*rz,dx*fx+dz*fz),dy=Math.round(radarHit.y-(P.y+1));
+ $('rarrow').style.opacity=1;$('rarrow').style.transform=`rotate(${ang}rad)`;
+ $('rinfo').textContent=`${Math.round(radarHit.d)} m · ${dy>1?'▲ '+dy+' höher':dy<-1?'▼ '+(-dy)+' tiefer':'gleiche Höhe'}${bd.tier>tier?' · braucht '+TOOLS[bd.tier].n:''}`}
+function cycleRadar(back){radarSel=back?(radarSel<=-1?RADAR.length-1:radarSel-1):(radarSel>=RADAR.length-1?-1:radarSel+1);radarT=0;
+ try{localStorage.setItem('satiscraft-radar',String(radarSel))}catch(e){}toast(radarSel<0?'Erzradar aus':'Erzradar: '+BL[RADAR[radarSel]].n.replace('vorkommen',''))}
+
 // ---------- Eigene Hand / Werkzeug (Ich-Perspektive, eigener Render-Durchgang über der Welt) ----------
 renderer.autoClear=false;
 const viewScene=new THREE.Scene(),viewCam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.01,10);
@@ -708,7 +731,7 @@ function frame(now){
  slow+=dt;if(slow>.3){slow=0;if(panel&&panel.kind==='machine'&&!panelHold)renderPanel();renderGoal()}
  saveT+=dt;if(saveT>60){saveT=0;if(locked&&net.role!=='client')save()}
  netTick(dt);
- updateViewModel(dt);renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam)}
+ updateViewModel(dt);updateRadar(dt);renderer.clear();renderer.render(scene,camera);renderer.clearDepth();renderer.render(viewScene,viewCam)}
 
 // ---------- Koop (PeerJS/WebRTC; der Host ist maßgeblich, Mitspieler senden nur Aktionen) ----------
 const NET_PREFIX='satiscraft-v2-',PCOL=['#f29a2e','#3d9bd6','#5fcf6f','#d65fb4'];

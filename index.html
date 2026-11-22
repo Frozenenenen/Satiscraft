@@ -68,6 +68,10 @@ button.b.ok{background:var(--ok);color:#06210b}button.b.err{background:var(--bad
 .crow input{font:16px "Chakra Petch",sans-serif;background:#262b32;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:8px 10px;min-height:40px;width:170px}
 .crow input:focus-visible{outline:2px solid var(--acc)}#joincode{width:120px;text-transform:uppercase;letter-spacing:.12em}
 #coopstate{margin:10px 0 0;font-size:14px;min-height:1.4em}#coopstate.err{color:var(--bad)}
+#radar{right:14px;top:58px;background:#16191dd9;border-right:4px solid var(--acc);padding:8px 12px;border-radius:4px;display:none;gap:12px;align-items:center;min-width:220px}
+#radar .ring{width:48px;height:48px;border-radius:50%;border:2px solid #4b5058;position:relative;flex:none;background:radial-gradient(circle,#23272c 60%,#1b1e22)}
+#rarrow{position:absolute;left:50%;top:50%;width:0;height:0;margin:-16px 0 0 -9px;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:26px solid var(--acc);transform-origin:9px 16px;transition:transform .15s linear}
+#radar b{display:flex;align-items:center;gap:6px;font-size:14px}#rdot{width:10px;height:10px;border-radius:2px;display:inline-block}#rinfo{display:block;font-size:13px;color:#cfd5db}
 #coophud{right:14px;top:14px;background:#16191dd9;border-right:4px solid var(--acc);padding:8px 14px;border-radius:4px;display:none;font-size:14px}
 #savestate{margin:10px 0 0;font-size:13px;color:var(--mut);min-height:1.4em}#savestate.err{color:var(--bad)}
 button.b:disabled{opacity:.4;cursor:default}
@@ -95,7 +99,8 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
 <div id="coophud" class="hud"></div>
-<div id="bottom" class="hud"><div id="tool"></div><div id="hotbar"></div><div id="keys">RMB ziehen: umsehen · WASD laufen · Leertaste springen · Shift rennen · LMB abbauen · Rechtsklick Block setzen · Q Baumenü · E Benutzen · I Inventar · R drehen · Esc Pause</div></div>
+<div id="radar" class="hud" aria-live="off"><div class="ring"><i id="rarrow"></i></div><div><b><span id="rdot"></span><span id="rname"></span></b><span id="rinfo"></span></div></div>
+<div id="bottom" class="hud"><div id="tool"></div><div id="hotbar"></div><div id="keys">RMB ziehen: umsehen · WASD laufen · Leertaste springen · Shift rennen · LMB abbauen · Rechtsklick Block setzen · Q Baumenü · E Benutzen · I Inventar · F Radar · R drehen · Esc Pause</div></div>
 
 <div id="pause" class="ov"><div class="card">
   <h1>SATIS<span>CRAFT</span></h1>
@@ -115,6 +120,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
      <tr><td>Shift + Ziehen</td><td>Förderbänder als Linie legen (folgt der Zugrichtung)</td></tr>
      <tr><td>E</td><td>Maschine öffnen</td></tr>
      <tr><td>I</td><td>Inventar</td></tr>
+     <tr><td>F / Shift+F</td><td>Erzradar: Erzart wechseln / aus</td></tr>
     </table></div>
    <div><h3>So funktioniert’s</h3>
     <p>Erzvorkommen liegen in der Welt. Jeder Erzblock unter einem <b>Miner</b> enthält 40 Einheiten; der Miner trägt den Bereich darunter Schicht für Schicht ab.</p>
@@ -135,6 +141,6 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=27"></script>
+<script src="game.js?v=28"></script>
 </body>
 </html>
