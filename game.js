@@ -476,15 +476,16 @@ function minerArea(m,fn){const def=BUILD[m.type];for(let y=m.y-1;y>=Math.max(1,m
  const id=get(x,y,z);if(m.recipe===1?id===3:(BL[id]&&BL[id].ore&&BL[id].tier<=def.tier)){if(fn(x,y,z,id))return}}}
 const bridgePath=(def,f)=>[.27+1.25*Math.min(1,Math.sin(Math.PI*f)*1.6),-def.d/2+f*def.d];
 // Lager als Dispenser: gibt das gewählte Item (oder reihum alle) an freie Bänder an den Ausgängen ab.
-const dispOk=v=>v==='all'||(typeof v==='string'&&own(ITEMS,v))?v:null;
+// Ausgabe je Ausgang: null (aus), 'all' oder Liste von Items
+const dispOk=v=>{if(v==='all')return'all';if(typeof v==='string')v=[v];if(!Array.isArray(v))return null;const l=[...new Set(v.filter(k=>typeof k==='string'&&own(ITEMS,k)))].slice(0,12);return l.length?l:null};
 function normDisp(v,n){return Array.from({length:n},(_,i)=>dispOk(Array.isArray(v)?v[i]:v))}
 const portName=(m,i)=>m.outs.length===1?'Ausgang':m.outs.length===2?['Ausgang links','Ausgang rechts'][i]:['Ausgang links','Ausgang Mitte','Ausgang rechts'][i];
 function dispense(m){m.working=false;let gave=false;
  m.outs.forEach((p,i)=>{const sel=m.disp[i];let st;
   if(!sel)st='aus';else{const b=belts.get(idx(p.x,p.y,p.z));
    if(!b)st='kein Band (oranger Pfeil, Bodenhöhe)';else if(b.dir===(p.dir+2)%4)st='Band zeigt zum Lager – umdrehen';else if(!beltFree(b))st='Band voll';
-   else{let it=null;if(sel==='all'){const ks=Object.keys(m.inBuf).filter(k=>m.inBuf[k]>0&&!m.disp.includes(k));if(ks.length){m.di[i]=(m.di[i]+1)%ks.length;it=ks[m.di[i]]}}else if((m.inBuf[sel]||0)>0)it=sel;
-    if(!it)st=sel==='all'?(m.disp.some(v=>v&&v!=='all')?'nichts Übriges im Lager':'Lager leer'):'kein '+ITEMS[sel][0]+' im Lager';
+   else{const used=new Set(m.disp.flatMap(v=>Array.isArray(v)?v:[]));const ks=(sel==='all'?Object.keys(m.inBuf).filter(k=>!used.has(k)):sel).filter(k=>m.inBuf[k]>0);let it=null;if(ks.length){m.di[i]=(m.di[i]+1)%ks.length;it=ks[m.di[i]]}
+    if(!it)st=sel==='all'?(used.size?'nichts Übriges im Lager':'Lager leer'):sel.length>1?'keins der gewählten Items im Lager':'kein '+ITEMS[sel[0]][0]+' im Lager';
     else{m.inBuf[it]--;if(!m.inBuf[it])delete m.inBuf[it];b.items.push({item:it,p:0});gave=true;st='gibt aus'}}}
   if(st!=='Band voll'||m.ps[i]!=='gibt aus')m.ps[i]=st});
  if(gave){m.working=true;m.pulse=Math.max(m.pulse||0,.35)}
@@ -584,9 +585,9 @@ function renderPanel(){
    <p class="mut">Position: ${m.x}, ${m.y}, ${m.z}</p>`}
   else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>${td.path?(waveActive()?`<p><b>Welle ${td.wave} läuft</b> – noch ${enemies.length+spawnQ.length} Gegner.</p>`:`<div class="btns"><button class="b danger" data-act="wave">Welle ${td.wave+1} jetzt starten</button></div><p class="mut">Startet sofort. Der normale Zeitplan läuft weiter, die Welle danach wird stärker.</p>`):''}`}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>
-   <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3>${m.outs.length>1?'<p class="mut">Links/rechts gesehen, wenn du vor den orangen Pfeilen stehst und auf das Lager schaust. „Alles“ gibt alles aus, was kein anderer Ausgang ausgibt.</p>':''}
-   ${m.outs.map((p,i)=>{const cur=m.disp[i]||'off';const opts=[['off','Aus'],['all','Alles'],...[...new Set([...Object.keys(m.inBuf),...(m.disp[i]&&m.disp[i]!=='all'?[m.disp[i]]:[])])].map(k=>[k,ITEMS[k][0]])];
-    return`<div class="dsp"><b>${portName(m,i)}</b> <span class="mut">– ${esc(m.ps[i]||'')}</span><div class="recs">${opts.map(([k,n])=>`<button class="rec ${cur===k?'on':''}" data-act="disp:${i}.${k}">${n}</button>`).join('')}</div></div>`}).join('')}`}
+   <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3>${m.outs.length>1?'<p class="mut">Links/rechts gesehen, wenn du vor den orangen Pfeilen stehst und auf das Lager schaust. „Alles“ gibt alles aus, was kein anderer Ausgang ausgibt.</p>':''}<p class="mut">Mehrere Items pro Ausgang wählbar (nochmal klicken = abwählen), sie kommen abwechselnd heraus.</p>
+   ${m.outs.map((p,i)=>{const cur=m.disp[i],on=k=>k==='off'?!cur:k==='all'?cur==='all':Array.isArray(cur)&&cur.includes(k);const opts=[['off','Aus'],['all','Alles'],...[...new Set([...Object.keys(m.inBuf),...(Array.isArray(cur)?cur:[])])].map(k=>[k,ITEMS[k][0]])];
+    return`<div class="dsp"><b>${portName(m,i)}</b> <span class="mut">– ${esc(m.ps[i]||'')}</span><div class="recs">${opts.map(([k,n])=>`<button class="rec ${on(k)?'on':''}" data-act="disp:${i}.${k}">${n}</button>`).join('')}</div></div>`}).join('')}`}
   else if(def.miner){let left=0,blocks=0;minerArea(m,(x,y,z)=>{const k=idx(x,y,z);left+=reserves.has(k)?reserves.get(k):RESERVE;blocks++});
    h+=`<h3>Abbauziel</h3><div class="recs">${['Erze','Stein'].map((n,i)=>`<button class="rec ${i===m.recipe?'on':''}" data-act="recipe:${i}">${n}</button>`).join('')}</div>
    <p>${m.status||'Startet…'}</p><p class="mut">Abbaubereich: ${m.rw+2}×${m.rd+2} Felder, bis 12 Blöcke tief. Verbleibend: <b style="color:var(--ink)">${left}</b> Einheiten in ${blocks} ${m.recipe===1?'Steinblöcken':'Erzblöcken'}.</p>
@@ -618,7 +619,7 @@ function panelAct(m,act,arg){
  if(act==='rename'){if(BUILD[m.type].beacon&&typeof arg==='string'){m.name=cleanName(arg);toast('Barke heißt jetzt „'+m.name+'“')}return}
  if(act==='gadget'){const g=GADGETS[arg];if(m.type==='workbench'&&g&&own(GADGETS,arg)&&!gadgets[arg]&&has(g.cost)){for(const k in g.cost)add(k,-g.cost[k]);gadgets[arg]=true;m.pulse=1.4;toast(g.n+' hergestellt'+(arg==='radar'?' – Taste F':''))}return}
  if(act==='purge'){purgeInputs(m);return}
- if(act==='disp'){if(!BUILD[m.type].store||typeof arg!=='string')return;const[pi,k]=arg.split('.');const i=+pi;if(!isInt(i,0,m.outs.length-1))return;if(k==='off')m.disp[i]=null;else if(dispOk(k))m.disp[i]=k;return}
+ if(act==='disp'){if(!BUILD[m.type].store||typeof arg!=='string')return;const[pi,k]=arg.split('.');const i=+pi;if(!isInt(i,0,m.outs.length-1))return;if(k==='off')m.disp[i]=null;else if(k==='all')m.disp[i]='all';else if(own(ITEMS,k)){const c=Array.isArray(m.disp[i])?m.disp[i]:[];const l=c.includes(k)?c.filter(x=>x!==k):[...c,k].slice(0,12);m.disp[i]=l.length?l:null}return}
  if(act==='takeall'&&BUILD[m.type].store){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};return}
  if(!own(ITEMS,arg))return;
  if(act==='put'&&BUILD[m.type].turret){const T=BUILD[m.type].turret;if(T.ammo!==arg)return;const n=Math.min(inv[arg]||0,200-(m.inBuf[arg]||0));if(n>0){add(arg,-n);m.inBuf[arg]=(m.inBuf[arg]||0)+n}return}
@@ -727,7 +728,7 @@ function sanitize(d){
  for(const[k,a,b]of[['x',-LIM,LIM],['y',-5,H+5],['z',-LIM,LIM],['yaw',-1e6,1e6],['pitch',-1.55,1.55]])if(isNum(p[k],a,b))o.P[k]=p[k];
  for(const m of arr(d.machines)){if(!m||typeof m!=='object'||!own(BUILD,m.t)||m.t==='belt')continue;
   if(!isXZ(m.x)||!isInt(m.y,1,H-1)||!isXZ(m.z)||!isInt(m.r,0,3))continue;
-  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0,nm:BUILD[m.t].beacon&&typeof m.nm==='string'?cleanName(m.nm):undefined,ds:BUILD[m.t].store?(Array.isArray(m.ds)?m.ds.slice(0,3).map(dispOk):dispOk(m.ds)):null})}
+  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0,nm:BUILD[m.t].beacon&&typeof m.nm==='string'?cleanName(m.nm):undefined,ds:BUILD[m.t].store?(Array.isArray(m.ds)?m.ds.slice(0,3).map(dispOk):[0,1,2].map(()=>dispOk(m.ds))):null})}
  for(const b of arr(d.belts)){if(!Array.isArray(b)||!isXZ(b[0])||!isInt(b[1],1,H-1)||!isXZ(b[2])||!isInt(b[3],0,3))continue;
   o.belts.push([b[0],b[1],b[2],b[3],arr(b[4]).filter(k=>typeof k==='string'&&own(ITEMS,k)).slice(0,4)])}
  return o}
@@ -744,7 +745,7 @@ function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:
  if(data){if(data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path});buildPathIndex()}
   for(const[i,id]of data.changes)recordChange(i,id);for(const[i,r]of data.res)reserves.set(i,r);
   inv=data.inv||{};tier=data.tier||0;gadgets=data.gadgets||{radar:false};stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
-  for(const m of data.machines){if(!data.dv&&BUILD[m.t]&&BUILD[m.t].store&&!m.ds)m.ds='all';if(clearFor(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m)}
+  for(const m of data.machines){if(!data.dv&&BUILD[m.t]&&BUILD[m.t].store&&(!m.ds||(Array.isArray(m.ds)&&m.ds.every(v=>!v))))m.ds='all';if(clearFor(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m)}
   for(const b of data.belts)if(clearFor('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
  if(data&&data.td){const t=data.td;
   if(td.path){for(const[ty,sv,hp,mx]of t.en){const e=spawnEnemy(ty,mx,0,Math.min(sv,route.length-1));e.hp=hp}spawnQ=t.q.map((ty,i)=>({ty,t:i*1.6}));waveT=0}}
