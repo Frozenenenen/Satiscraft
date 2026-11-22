@@ -1,6 +1,6 @@
 {
 // ---------- Konstanten & Daten ----------
-const H=64,CS=16,MACH=250,BELT=251,RESERVE=40,MAXIN=20,MAXOUT=20,BS=1.6,SP=0.34;
+const H=64,CS=16,MACH=250,BELT=251,RESERVE=40,MAXIN=20,MAXOUT=20,SP=0.34;let BS=1.6;
 const DIRS=[[0,1],[-1,0],[0,-1],[1,0]];
 const KEY='satiscraft-v1';
 const ITEMS={wood:['Holz','#9b6b3d'],dirt:['Erde','#7a5535'],stone:['Stein','#8d9094'],sand:['Sand','#e3d39a'],coal:['Kohle','#2b2b2e'],
@@ -8,7 +8,10 @@ const ITEMS={wood:['Holz','#9b6b3d'],dirt:['Erde','#7a5535'],stone:['Stein','#8d
  iron_bar:['Eisenbarren','#c8ccd2'],copper_bar:['Kupferbarren','#e08a4a'],gold_bar:['Goldbarren','#ffd24a'],titan_bar:['Titanbarren','#a5eef4'],
  iron_plate:['Eisenplatte','#a9b0b8'],rod:['Eisenstange','#6f7780'],wire:['Draht','#d9783a'],steel:['Stahlbarren','#4f5862'],motor:['Motor','#3e6ea8'],circuit:['Schaltkreis','#3c9a4c'],
  sandstone:['Sandstein','#d9c38a'],quartz_ore:['Quarzerz','#e9e4f2'],bauxite:['Bauxit','#b5562f'],planks:['Bretter','#c39a5f'],glass:['Glas','#bfe6f0'],concrete:['Beton','#b9bcbf'],
- quartz:['Quarzkristall','#f4efff'],alu_bar:['Aluminiumbarren','#dfe4ea'],alu_sheet:['Alublech','#cfd8e2'],copper_sheet:['Kupferblech','#d9874f'],silicon:['Silizium','#5d6b8a'],frame:['Rahmen','#8a939c'],chip:['Mikrochip','#2f8f6a'],ammo:['Munition','#b08d3c']};
+ quartz:['Quarzkristall','#f4efff'],alu_bar:['Aluminiumbarren','#dfe4ea'],alu_sheet:['Alublech','#cfd8e2'],copper_sheet:['Kupferblech','#d9874f'],silicon:['Silizium','#5d6b8a'],frame:['Rahmen','#8a939c'],chip:['Mikrochip','#2f8f6a'],ammo:['Munition','#b08d3c'],
+ screw:['Schrauben','#9aa3ab'],gear:['Zahnrad','#7d8790'],cable:['Kabel','#2f3a44'],rplate:['Verstärkte Platte','#7f8a94'],rotor:['Rotor','#5f7d95'],battery:['Batterie','#3fbf6a'],
+ coke:['Koks','#4a4a52'],titan_plate:['Titanplatte','#8fe0e6'],alloy:['Titanlegierung','#b9f2ee'],lens:['Linse','#dff6ff'],shell:['Granate','#7a6a3a'],
+ computer:['Computer','#2d5f8f'],hframe:['Schwerer Rahmen','#56606a'],turbo:['Turbomotor','#d9483b']};
 const BL=[null,
  {n:'Gras',t:[0,1,2],tier:0,time:.5,drop:'dirt'},
  {n:'Erde',t:[2,2,2],tier:0,time:.45,drop:'dirt'},
@@ -36,9 +39,18 @@ const BL=[null,
  {n:'Beton',t:[29,29,29],tier:1,time:1.6,drop:'concrete'},
  {n:'Pfadstein',t:[30,30,30],tier:99,time:1,drop:null}];
 const NBL=BL.length-1;const isLog=id=>id===5||id===17,isLeaf=id=>id===6||id===16||id===18;
-const TOOLS=[{n:'Hand',s:1},{n:'Holzspitzhacke',s:1.7},{n:'Steinspitzhacke',s:2.4},{n:'Eisenspitzhacke',s:3.3},{n:'Stahlspitzhacke',s:4.6}];
-const TOOLREC=[null,{wood:5},{stone:8,wood:2},{iron_bar:6,wood:2},{steel:6,rod:3}];
-const GADGETS={radar:{n:'Erzradar',cost:{copper_bar:4,iron_bar:2},desc:'Zeigt Richtung und Entfernung zum nächsten Erz der gewählten Art (Taste F).'}};
+const TOOLS=[{n:'Hand',s:1},{n:'Holzspitzhacke',s:1.7},{n:'Steinspitzhacke',s:2.4},{n:'Eisenspitzhacke',s:3.3},{n:'Stahlspitzhacke',s:4.6},{n:'Titanspitzhacke',s:6.5}];
+const TOOLREC=[null,{wood:5},{stone:8,wood:2},{iron_bar:6,wood:2},{steel:6,rod:3},{alloy:6,rplate:2}];
+const GADGETS={radar:{n:'Erzradar',cost:{copper_bar:4,iron_bar:2},desc:'Zeigt Richtung und Entfernung zum nächsten Erz der gewählten Art (Taste F).'},
+ boots:{n:'Sprintstiefel',cost:{alu_sheet:4,motor:1,planks:4},desc:'35 % schneller laufen.'},
+ spring:{n:'Sprungfedern',cost:{steel:4,rod:6,screw:12},desc:'Springt gut 2 Blöcke hoch.'},
+ nv:{n:'Nachtsicht',cost:{lens:2,battery:1,circuit:1},desc:'Hellt die Nacht auf (Taste N an/aus).'},
+ belt2:{n:'Förderband Mk2',cost:{steel:10,motor:2,rplate:2},desc:'Alle Förderbänder laufen schneller (1,6 → 2,6 Felder/s).'},
+ blaster:{n:'Blaster',cost:{lens:2,battery:2,chip:1,steel:4},desc:'Handwaffe gegen Angreifer: Taste G schießt auf den anvisierten Gegner.'},
+ jetpack:{n:'Jetpack',cost:{turbo:1,battery:4,alu_sheet:8},req:'spring',desc:'Leertaste in der Luft halten zum Fliegen.'},
+ belt3:{n:'Förderband Mk3',cost:{alloy:10,turbo:2,computer:1},req:'belt2',desc:'Förderbänder noch schneller (→ 3,8 Felder/s).'}};
+const updateBeltSpeed=()=>{BS=gadgets.belt3?3.8:gadgets.belt2?2.6:1.6};
+const cleanGadgets=g=>Object.fromEntries(Object.keys(GADGETS).map(k=>[k,!!(g&&typeof g==='object'&&g[k]===true)]));
 const PLACE=[['dirt',2],['stone',3],['sand',4],['wood',5],['planks',22],['glass',23],['concrete',24],['sandstone',13]];
 const BUILD={
  workbench:{n:'Werkbank',w:2,d:2,h:2,cost:{wood:8},ins:[],outs:[],desc:'Stellt Spitzhacken her. [E] zum Öffnen.'},
@@ -61,18 +73,28 @@ const BUILD={
  laser:{n:'Laserturm',w:2,d:2,h:3,cost:{alu_sheet:6,chip:2,steel:6},ins:[],outs:[],turret:{range:18,dmg:28,cd:.5,kind:'laser'},desc:'Starker Strahl ohne Munition. Reichweite 18.'},
  tower:{n:'Basisturm',w:3,d:3,h:15,cost:{},ins:[],outs:[],fixed:1,desc:'Deine Basis. Steht seit Spielbeginn und muss verteidigt werden.'},
  barke:{n:'Barke',w:1,d:1,h:2,cost:{stone:6,coal:2,iron_bar:2},ins:[],outs:[],beacon:1,desc:'Benennbarer Wegpunkt mit Lichtsäule. Erscheint im Kompass oben.'},
+ smelter2:{n:'Hochofen',w:2,d:3,h:3,cost:{steel:10,concrete:20,iron_plate:10},ins:[[0,-1,0],[1,-1,0]],outs:[[1,3,0]],auto:1,speed:2,desc:'Doppelt so schnell wie der Schmelzofen, 2 Eingänge. Gleiche Rezepte, wählt automatisch.'},
+ constructor2:{n:'Präzisionskonstruktor',w:2,d:3,h:2,cost:{rplate:4,motor:2,circuit:2},ins:[[0,-1,0],[1,-1,0]],outs:[[1,3,0]],speed:2.5,desc:'2,5× so schnell wie der Konstruktor, 2 Eingänge. Gleiche Rezepte.'},
+ manufacturer:{n:'Fertiger',w:3,d:3,h:3,cost:{steel:20,motor:4,circuit:6,rplate:6},ins:[[0,-1,0],[1,-1,0],[2,-1,0],[-1,1,3]],outs:[[1,3,0]],desc:'Hochwertige Bauteile aus bis zu 4 Zutaten: Computer, schwerer Rahmen, Turbomotor. 4 Eingänge.'},
+ sorter:{n:'Sortierer',w:1,d:1,h:1,cost:{circuit:1,iron_plate:2},ins:[[0,-1,0]],outs:[[0,1,0],[-1,0,1],[1,0,3]],router:1,desc:'Gewählte Items gehen nach vorne, alle anderen zu den Seiten. Auswahl mit [E]. Kann auf ein Band gesetzt werden.'},
+ mortar:{n:'Mörser',w:2,d:2,h:2,cost:{steel:12,rplate:4,gear:6},ins:[[0,-1,0],[1,-1,0]],outs:[],turret:{range:22,dmg:45,cd:2.4,spd:13,kind:'shell',ammo:'shell',splash:2.6},desc:'Granaten mit Flächenschaden (Radius 2,6). Braucht Granaten (Monteur). Reichweite 22.'},
+ tesla:{n:'Teslaturm',w:2,d:2,h:3,cost:{battery:4,cable:10,alloy:4},ins:[],outs:[],turret:{range:12,dmg:18,cd:1,kind:'tesla',chain:4},desc:'Blitz springt auf bis zu 4 Gegner über. Ohne Munition. Reichweite 12.'},
  miner3:{n:'Miner Mk3',w:2,d:2,h:3,cost:{alu_sheet:10,frame:6,chip:4},ins:[],outs:[[0,2,0]],miner:1,tier:4,period:.5,desc:'Doppelt so schnell wie Mk2, fördert alle Erze.'}};
-const CATS=[['abbau','Abbau',['miner1','miner2','miner3']],['verarbeitung','Verarbeitung',['smelter','constructor','foundry','assembler']],
- ['logistik','Logistik',['belt','splitter','merger','bridge1','bridge3']],['lager','Lager',['chest','container','warehouse']],['werkstatt','Werkstatt',['workbench','barke']],['verteidigung','Verteidigung',['ballista','gunturret','laser']]];
+const CATS=[['abbau','Abbau',['miner1','miner2','miner3']],['verarbeitung','Verarbeitung',['smelter','constructor','foundry','assembler','smelter2','constructor2','manufacturer']],
+ ['logistik','Logistik',['belt','splitter','merger','sorter','bridge1','bridge3']],['lager','Lager',['chest','container','warehouse']],['werkstatt','Werkstatt',['workbench','barke']],['verteidigung','Verteidigung',['ballista','gunturret','mortar','tesla','laser']]];
 let buildCat=0;try{const c=+localStorage.getItem('satiscraft-cat');if(c>=0&&c<CATS.length)buildCat=c}catch(e){}
 const RECIPES={
  smelter:[{in:{iron_ore:1},out:{iron_bar:1},t:2},{in:{copper_ore:1},out:{copper_bar:1},t:2},{in:{gold_ore:1},out:{gold_bar:1},t:3},{in:{titan_ore:1},out:{titan_bar:1},t:4},
-  {in:{sand:1},out:{glass:1},t:2},{in:{quartz_ore:1},out:{quartz:1},t:3},{in:{bauxite:1},out:{alu_bar:1},t:4}],
+  {in:{sand:1},out:{glass:1},t:2},{in:{quartz_ore:1},out:{quartz:1},t:3},{in:{bauxite:1},out:{alu_bar:1},t:4},{in:{coal:2},out:{coke:1},t:3}],
  constructor:[{in:{iron_bar:2},out:{iron_plate:1},t:3},{in:{iron_bar:1},out:{rod:1},t:2},{in:{copper_bar:1},out:{wire:2},t:2},
-  {in:{wood:1},out:{planks:2},t:1.5},{in:{stone:2},out:{concrete:1},t:3},{in:{alu_bar:1},out:{alu_sheet:1},t:3},{in:{copper_bar:2},out:{copper_sheet:1},t:3},{in:{rod:1},out:{ammo:6},t:2}],
- foundry:[{in:{iron_ore:1,coal:1},out:{steel:1},t:3},{in:{sand:2,quartz:1},out:{silicon:1},t:4}],
+  {in:{wood:1},out:{planks:2},t:1.5},{in:{stone:2},out:{concrete:1},t:3},{in:{alu_bar:1},out:{alu_sheet:1},t:3},{in:{copper_bar:2},out:{copper_sheet:1},t:3},{in:{rod:1},out:{ammo:6},t:2},
+  {in:{rod:1},out:{screw:4},t:2},{in:{steel:1},out:{gear:2},t:3},{in:{wire:2},out:{cable:1},t:2},{in:{titan_bar:2},out:{titan_plate:1},t:4},{in:{quartz:1},out:{lens:1},t:3}],
+ foundry:[{in:{iron_ore:1,coal:1},out:{steel:1},t:3},{in:{sand:2,quartz:1},out:{silicon:1},t:4},{in:{titan_bar:1,alu_bar:1},out:{alloy:2},t:5},{in:{iron_ore:2,coke:1},out:{steel:3},t:4}],
  assembler:[{in:{steel:1,wire:4},out:{motor:1},t:6},{in:{gold_bar:1,wire:2},out:{circuit:1},t:5},
-  {in:{iron_plate:2,rod:2},out:{frame:1},t:5},{in:{silicon:1,copper_sheet:1},out:{chip:1},t:6}]};
+  {in:{iron_plate:2,rod:2},out:{frame:1},t:5},{in:{silicon:1,copper_sheet:1},out:{chip:1},t:6},
+  {in:{iron_plate:3,screw:6},out:{rplate:1},t:6},{in:{rod:2,screw:8},out:{rotor:1},t:6},{in:{alu_sheet:1,copper_sheet:1},out:{battery:1},t:5},{in:{steel:1,coke:1},out:{shell:2},t:4}],
+ manufacturer:[{in:{chip:2,circuit:2,cable:4,frame:1},out:{computer:1},t:12},{in:{frame:2,rplate:2,steel:4,screw:12},out:{hframe:1},t:14},{in:{motor:2,rotor:2,battery:1,chip:1},out:{turbo:1},t:16}]};
+RECIPES.smelter2=RECIPES.smelter;RECIPES.constructor2=RECIPES.constructor;
 const GOALS=[
  ['Baue Bäume mit der Hand ab und sammle 8 Holz.',()=>inv.wood>=8||count('workbench')],
  ['Räume eine ebene 2×2-Fläche frei und baue eine Werkbank (Q).',()=>count('workbench')],
@@ -90,6 +112,11 @@ const GOALS=[
  ['Baue einen Monteur und stelle Motoren und Schaltkreise her.',()=>(stats.produced.motor||0)>0&&(stats.produced.circuit||0)>0],
  ['Baue einen Miner Mk2 auf ein Titanvorkommen.',()=>count('miner2')],
  ['Erkunde Wüste und Ödland: Aus Bauxit und Quarz entstehen Alublech und Mikrochips – baue einen Miner Mk3.',()=>count('miner3')],
+ ['Stelle Schrauben her (Konstruktor) und baue daraus verstärkte Platten (Monteur).',()=>(stats.produced.rplate||0)>0],
+ ['Baue einen Hochofen – doppelt so schnell wie der Schmelzofen.',()=>count('smelter2')],
+ ['Baue einen Fertiger und stelle einen Computer her.',()=>(stats.produced.computer||0)>0],
+ ['Stelle einen Turbomotor her (Rotoren, Batterien, Motoren, Mikrochip).',()=>(stats.produced.turbo||0)>0],
+ ['Stelle eine Titanspitzhacke her (Titanlegierung aus der Gießerei).',()=>tier>=5],
  ['Alle Meilensteine erreicht. Automatisiere deine Fabrik weiter!',()=>false]];
 
 // ---------- Zustand ----------
@@ -344,7 +371,7 @@ function model(type,ghost){
   for(let i=-1.2;i<=1.21;i+=.3){bx(g,C(0x5a646d),.08,1.4,.05,i,.15,1.41);bx(g,C(0x5a646d),.08,1.4,.05,i,.15,-1.41)}
   bx(g,C(0xe8892b),2.82,.12,2.82,0,1.2,0);bx(g,C(0x23272c),1,1,.06,0,.15,1.43);
   const lid=new THREE.Group();lid.position.set(0,1.55,-1.4);bx(lid,C(0x4d565e),2.86,.14,2.86,0,0,1.4);bx(lid,C(0xffd24a),.9,.05,.9,0,.14,1.4);g.add(lid);a.lid=lid;a.lamp=.18}
- if(def.router){const col=type==='splitter'?0xe8b02b:0x3d78c2;bx(g,C(0x3b3f44),.96,.12,.96,0,0,0);bx(g,C(col),.66,.42,.66,0,.12,0);
+ if(def.router){const col=type==='splitter'?0xe8b02b:type==='sorter'?0x3c9a4c:0x3d78c2;bx(g,C(0x3b3f44),.96,.12,.96,0,0,0);bx(g,C(col),.66,.42,.66,0,.12,0);
   bx(g,C(0x33373c),.5,.06,.5,0,.54,0);bx(g,C(0x23272c),.3,.2,.08,0,.18,.33);bx(g,C(0x23272c),.3,.2,.08,0,.18,-.33);
   bx(g,C(0x23272c),.08,.2,.3,.33,.18,0);bx(g,C(0x23272c),.08,.2,.3,-.33,.18,0)}
  if(def.bridge){const N=def.d*8;const pts=[];for(let i=0;i<=N;i++){const[py,pz]=bridgePath(def,i/N);pts.push([py-.17,pz])}
@@ -385,6 +412,21 @@ function model(type,ghost){
  if(type==='assembler'){bx(g,C(0x3b3f44),2.95,.25,2.95,0,0,0);bx(g,C(0x2f9b8f),2.6,1,2.6,0,.25,0);bx(g,C(0xd0d4d8),1.4,.1,1.4,0,1.25,.2);
   const arm=new THREE.Group();arm.position.set(-.8,1.25,-.8);bx(arm,C(0xe8892b),.3,.9,.3,0,0,0);const up=bx(arm,C(0xe8892b),.2,.2,1.1,0,.8,.5);up.position.z=.5;
   bx(arm,C(0x33373c),.25,.3,.25,0,.55,1.05);g.add(arm);a.arm=arm;a.emit.push({p:[0,1.4,.2],k:'spark'})}
+ if(type==='smelter2'){bx(g,C(0x3b3f44),1.95,.25,2.95,0,0,0);bx(g,C(0x5d6670),1.75,1.7,2.6,0,.25,0);a.glow=bx(g,GL(0xff6a10),.9,.5,.06,0,.5,1.31);
+  bx(g,C(0x8a4b33),1.85,.2,2.7,0,1.95,0);for(const sz of[-.7,.4])bx(g,C(0x45494e),.45,1.1,.45,-.45,2.15,sz);bx(g,C(0xe8892b),.12,1.7,.12,.8,.25,1.2);
+  a.emit.push({p:[-.45,3.3,-.7],k:'dark'},{p:[-.45,3.3,.4],k:'smoke'})}
+ if(type==='constructor2'){bx(g,C(0x3b3f44),1.95,.2,2.95,0,0,0);bx(g,C(0x6a4fc2),1.7,1,2.4,0,.2,0);bx(g,C(0x4a3794),1.3,.25,1.2,0,1.2,0);
+  a.press=bx(g,C(0xd8dde3),.4,.6,.4,0,1.35,0);bx(g,C(0xffd24a),1.72,.08,.1,0,.95,1.2);bx(g,C(0x8a9199),.16,.5,.16,.6,1.2,-.9);bx(g,C(0x8a9199),.16,.5,.16,-.6,1.2,-.9);
+  a.emit.push({p:[.6,1.75,-.9],k:'steam'},{p:[-.6,1.75,-.9],k:'steam'})}
+ if(type==='manufacturer'){bx(g,C(0x3b3f44),2.95,.25,2.95,0,0,0);bx(g,C(0xd9822b),2.6,1.3,2.6,0,.25,0);bx(g,C(0x33373c),2.7,.12,2.7,0,1.55,0);
+  bx(g,C(0x23272c),1.2,.7,.06,0,.45,1.31);a.glow=bx(g,GL(0x4fe3ff),.9,.12,.07,0,1.05,1.32);
+  const arm=new THREE.Group();arm.position.set(.7,1.67,-.6);bx(arm,C(0x55595e),.28,.8,.28,0,0,0);bx(arm,C(0x55595e),.18,.18,1,0,.7,.45);bx(arm,C(0xffd24a),.24,.24,.24,0,.55,.95);g.add(arm);a.arm=arm;
+  a.press=bx(g,C(0xb7bec5),.5,.5,.5,-.7,1.67,.5);a.emit.push({p:[0,1.8,.4],k:'spark'})}
+ if(type==='mortar'){bx(g,C(0x3b3f44),1.9,.3,1.9,0,0,0);bx(g,C(0x55595e),1.2,.4,1.2,0,.3,0);const hd=new THREE.Group();hd.position.y=.95;g.add(hd);a.head=hd;
+  bx(hd,C(0x5c6b45),.9,.35,.9,0,-.25,0);const tb=bx(hd,C(0x2a2d31),.34,1.1,.34,0,-.05,.05,CYL);tb.rotation.x=.7;a.muzzle=[0,1.7,.6]}
+ if(type==='tesla'){bx(g,C(0x3b3f44),1.9,.3,1.9,0,0,0);bx(g,C(0x5d6670),.5,1.9,.5,0,.3,0,CYL);for(const yy of[.7,1.2,1.7])bx(g,C(0xd9783a),.9,.12,.9,0,yy,0,CYL);
+  for(const[sx,sz]of[[-.7,-.7],[.7,-.7],[-.7,.7],[.7,.7]])bx(g,C(0x8a939c),.14,.6,.14,sx,.3,sz);
+  a.glow=bx(g,ghost?ghostMat:new THREE.MeshLambertMaterial({color:0x7fd7ff,emissive:0x7fd7ff,emissiveIntensity:.8}),.6,.6,.6,0,2.3,0);a.muzzle=[0,2.6,0]}
  const ports=(list,mat)=>{if(!Array.isArray(list))return;for(const[lx,lz,ld]of list){const px=lx+.5-def.w/2,pz=lz+.5-def.d/2;
   // Pfeil schwebt knapp über Bandhöhe, damit er auf angeschlossenen Bändern sichtbar bleibt
   const p=new THREE.Object3D();p.position.set(px,.135,pz);p.rotation.y=-ld*Math.PI/2;const ar=new THREE.Mesh(PLANE,mat);ar.rotation.x=-Math.PI/2;ar.renderOrder=2;p.add(ar);g.add(p);
@@ -414,7 +456,7 @@ function createMachine(type,ox,oy,oz,rot,data){
  if(type==='belt'){const b={x:ox,y:oy,z:oz,dir:rot,items:[],s:0};const g=new THREE.Group(),k=model('belt').g;g.add(k);b.k=k;g.position.set(ox+.5,oy,oz+.5);g.rotation.y=-rot*Math.PI/2;scene.add(g);b.g=g;
   belts.set(idx(ox,oy,oz),b);rawSet(ox,oy,oz,BELT);if(data)b.items=data.map((it,i)=>({item:it,p:Math.max(0,.9-i*SP)}));slopesDirty=true;if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return b}
  const m={type,x:ox,y:oy,z:oz,rot,rw,rd,h:def.h,inBuf:{},outBuf:{},recipe:0,t:0,status:'',working:false,tr:[]};
- if(data){m.inBuf=data.i||{};m.outBuf=data.o||{};m.recipe=data.rc||0;m.disp=data.ds||null;if(data.nm)m.name=data.nm}else if(def.store)m.disp='all'
+ if(data){m.inBuf=data.i||{};m.outBuf=data.o||{};m.recipe=data.rc||0;m.disp=data.ds||null;if(data.nm)m.name=data.nm;if(type==='sorter')m.filter=dispOk(data.fl)}else if(def.store)m.disp='all'
  if(def.beacon&&!m.name){let n=1;while(machines.some(q=>q.name==='Barke '+n))n++;m.name='Barke '+n}
  m.cells=cellsOf(def,ox,oy,oz,rot).map(c=>idx(c.x,c.y,c.z));
  for(const i of m.cells){setI(i,MACH);machineAt.set(i,m);markDirty(kX(i),kY(i),kZ(i))}
@@ -499,6 +541,9 @@ function tickMachine(m,dt){
   if(m.tr.length&&m.type==='merger'){const p=m.outs[0],b=belts.get(idx(p.x,p.y,p.z));
    if(b&&b.dir!==(p.dir+2)%4&&beltFree(b)){m.ri=m.ri||0;let j=-1,pi=0;for(let k=0;k<3&&j<0;k++){pi=(m.ri+k)%3;j=m.tr.findIndex(t=>t.pi===pi)}
     if(j<0)j=0;else m.ri=(pi+1)%3;b.items.push({item:m.tr.splice(j,1)[0].item,p:0})}return}
+  if(m.tr.length&&m.type==='sorter'){m.status='Sortiert…';const it=m.tr[0].item,hit=Array.isArray(m.filter)&&m.filter.includes(it),cand=hit?[0]:[1,2];m.sr=m.sr||0;
+   for(let k=0;k<cand.length;k++){const i=cand[(m.sr+k)%cand.length],p=m.outs[i],b=belts.get(idx(p.x,p.y,p.z));if(!b||b.dir===(p.dir+2)%4||!beltFree(b))continue;b.items.push({item:m.tr.shift().item,p:0});if(!hit)m.sr=(m.sr+k+1)%2;break}
+   if(m.tr.length&&!m.working)m.status='Wartet';return}
   if(m.tr.length){const n=m.outs.length;m.rr=m.rr||0;for(let k=0;k<n;k++){const i=(m.rr+k)%n,p=m.outs[i],b=belts.get(idx(p.x,p.y,p.z));
    if(!b||b.dir===(p.dir+2)%4||!beltFree(b))continue;b.items.push({item:m.tr.shift().item,p:0});m.rr=(i+1)%n;break}}
   return}
@@ -514,7 +559,7 @@ function tickMachine(m,dt){
     if(!found){m.working=false;m.status=m.recipe===1?'Kein Stein im Bereich unter dem Miner':'Kein abbaubares Erz im Bereich unter dem Miner – Abbauziel auf Stein stellen?'}}}}
  else if(!def.bridge&&!def.router&&RECIPES[m.type]){const r=RECIPES[m.type][m.recipe];
   const ok=Object.keys(r.in).every(k=>(m.inBuf[k]||0)>=r.in[k]);const full=Object.keys(r.out).some(k=>(m.outBuf[k]||0)>=MAXOUT);
-  if(ok&&!full){m.working=true;m.status='Produziert…';m.t+=dt;if(m.t>=r.t){m.t=0;for(const k in r.in){m.inBuf[k]-=r.in[k];if(!m.inBuf[k])delete m.inBuf[k]}
+  if(ok&&!full){m.working=true;m.status='Produziert…';m.t+=dt*(def.speed||1);if(m.t>=r.t){m.t=0;for(const k in r.in){m.inBuf[k]-=r.in[k];if(!m.inBuf[k])delete m.inBuf[k]}
    for(const k in r.out){m.outBuf[k]=(m.outBuf[k]||0)+r.out[k];stats.produced[k]=(stats.produced[k]||0)+r.out[k]}}}
   else{m.working=false;m.status=full?'Ausgang voll':'Wartet auf Eingangsmaterial'}}
  if(def.store){dispense(m);return}
@@ -527,13 +572,14 @@ const keys={};let mouseL=false;
 function collides(px,py,pz){const x0=Math.floor(px-.3),x1=Math.floor(px+.3),y0=Math.floor(py),y1=Math.floor(py+1.79),z0=Math.floor(pz-.3),z1=Math.floor(pz+.3);
  for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)for(let z=z0;z<=z1;z++){const id=get(x,y,z);if(id&&id!==BELT)return true}return false}
 function movePlayer(dt){
- const sp=keys.ShiftLeft||keys.ShiftRight?8:4.6;let fx=0,fz=0;
+ const sp=(keys.ShiftLeft||keys.ShiftRight?8:4.6)*(gadgets.boots?1.35:1);let fx=0,fz=0;
  const sx=-Math.sin(P.yaw),sz=-Math.cos(P.yaw);
  if(keys.KeyW){fx+=sx;fz+=sz}if(keys.KeyS){fx-=sx;fz-=sz}if(keys.KeyA){fx+=sz;fz-=sx}if(keys.KeyD){fx-=sz;fz+=sx}
  const l=Math.hypot(fx,fz)||1;const vx=fx/l*sp,vz=fz/l*sp;
  let nx=P.x+vx*dt;if(!collides(nx,P.y,P.z))P.x=nx;let nz=P.z+vz*dt;if(!collides(P.x,P.y,nz))P.z=nz;
  P.x=Math.max(-LIM+1,Math.min(LIM-1,P.x));P.z=Math.max(-LIM+1,Math.min(LIM-1,P.z));
- if(keys.Space&&P.ground){P.vy=8.2;P.ground=false}
+ if(keys.Space&&P.ground){P.vy=gadgets.spring?10.6:8.2;P.ground=false;P.jt=.25}
+ else if(keys.Space&&gadgets.jetpack&&!P.ground&&(P.jt-=dt)<=0&&P.y<H+20){P.vy=Math.min(5.5,P.vy+48*dt);P.jf=(P.jf||0)-dt;if(P.jf<=0){P.jf=.06;emit(new THREE.Vector3(P.x,P.y-.1,P.z),'steam')}}
  P.vy=Math.max(-40,P.vy-26*dt);const ny=P.y+P.vy*dt;
  if(collides(P.x,ny,P.z)){if(P.vy<0){const sy=Math.floor(ny)+1;if(!collides(P.x,sy,P.z))P.y=sy;P.ground=true}P.vy=0}else{P.y=ny;P.ground=false}
  if(P.y<-10){P.y=surfaceH(Math.floor(P.x),Math.floor(P.z))+2;P.vy=0}}
@@ -577,15 +623,16 @@ function renderPanel(){
  else if(panel.kind==='inv'){
   const ks=Object.keys(inv);h=`<h2>Inventar ${x}</h2><p>Werkzeug: <b>${TOOLS[tier].n}</b> <span class="mut">(Stufe ${tier})</span> · Geräte: <b>${Object.keys(GADGETS).filter(k=>gadgets[k]).map(k=>GADGETS[k].n).join(', ')||'keine'}</b></p><div class="grid">`+
    (ks.length?ks.map(k=>`<div class="row">${sw(k)}<b>${inv[k]}</b></div>`).join(''):'<p class="mut">Noch leer – baue etwas ab.</p>')+'</div>'+
-   `<h3>Abbaubarkeit</h3><p class="mut">Hand: Erde, Sand, Holz · Holzspitzhacke: Stein, Kohle · Steinspitzhacke: Kupfer, Eisen · Eisenspitzhacke: Gold · Stahlspitzhacke: Titan</p>`}
+   `<h3>Abbaubarkeit</h3><p class="mut">Hand: Erde, Sand, Holz · Holzspitzhacke: Stein, Kohle · Steinspitzhacke: Kupfer, Eisen · Eisenspitzhacke: Gold · Stahlspitzhacke: Titan · Titanspitzhacke: alles schneller</p>`}
  else{const m=panel.m,def=BUILD[m.type];h=`<h2>${def.n} ${x}</h2>`;
-  if(m.type==='workbench'){h+=`<h3>Geräte</h3>`+Object.keys(GADGETS).map(k=>{const g=GADGETS[k];return`<div class="row"><div><b>${g.n}</b> <span class="mut" style="font-size:13px">${g.desc}</span>${costHtml(g.cost)}</div><button class="b" data-act="gadget:${k}" ${gadgets[k]||!has(g.cost)?'disabled':''}>${gadgets[k]?'Vorhanden':'Herstellen'}</button></div>`}).join('')+`<h3>Spitzhacken</h3><p>Aktuell: <b>${TOOLS[tier].n}</b></p>`+[1,2,3,4].map(t=>`<div class="row"><div><b>${TOOLS[t].n}</b>${costHtml(TOOLREC[t])}</div><button class="b" data-act="craft:${t}" ${tier>=t||!has(TOOLREC[t])||t>tier+1?'disabled':''}>${tier>=t?'Vorhanden':'Herstellen'}</button></div>`).join('')}
+  if(m.type==='workbench'){h+=`<h3>Geräte</h3>`+Object.keys(GADGETS).map(k=>{const g=GADGETS[k];return`<div class="row"><div><b>${g.n}</b> <span class="mut" style="font-size:13px">${g.desc}</span>${costHtml(g.cost)}</div><button class="b" data-act="gadget:${k}" ${gadgets[k]||!has(g.cost)||(g.req&&!gadgets[g.req])?'disabled':''}>${gadgets[k]?'Vorhanden':g.req&&!gadgets[g.req]?'Braucht '+GADGETS[g.req].n:'Herstellen'}</button></div>`}).join('')+`<h3>Spitzhacken</h3><p>Aktuell: <b>${TOOLS[tier].n}</b></p>`+[1,2,3,4,5].map(t=>`<div class="row"><div><b>${TOOLS[t].n}</b>${costHtml(TOOLREC[t])}</div><button class="b" data-act="craft:${t}" ${tier>=t||!has(TOOLREC[t])||t>tier+1?'disabled':''}>${tier>=t?'Vorhanden':'Herstellen'}</button></div>`).join('')}
   else if(def.turret){const T=def.turret;h+=`<p>${m.status||'Bereit'}</p><p class="mut">Reichweite ${T.range} · Schaden ${T.dmg} · ${(1/T.cd).toFixed(1)} Schüsse/s${T.ammo?' · 1 Munition pro Schuss':' · ohne Munition'}</p>`+
    (T.ammo?`<div class="row"><span>${m.inBuf[T.ammo]||0}/200 ${sw(T.ammo)} <span class="mut">(Inventar: ${inv[T.ammo]||0})</span></span><button class="b sec" data-act="put:${T.ammo}" ${inv[T.ammo]?'':'disabled'}>Einlegen</button></div><p class="mut">Munition kann auch per Förderband an den grünen Pfeilen geliefert werden.</p>`:'')}
   else if(def.beacon){h+=`<p class="mut">Wegpunkt im Kompass. Gib der Barke einen Namen, um sie von anderen zu unterscheiden.</p>
    <div class="crow"><input id="bname" maxlength="24" value="${esc(m.name)}" aria-label="Name der Barke" autocomplete="off"><button class="b" data-act="rename">Umbenennen</button></div>
    <p class="mut">Position: ${m.x}, ${m.y}, ${m.z}</p>`}
   else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>${td.path?(waveActive()?`<p><b>Welle ${td.wave} läuft</b> – noch ${enemies.length+spawnQ.length} Gegner.</p>`:`<div class="btns"><button class="b danger" data-act="wave">Welle ${td.wave+1} jetzt starten</button></div><p class="mut">Startet sofort. Der normale Zeitplan läuft weiter, die Welle danach wird stärker.</p>`):''}`}
+  else if(m.type==='sorter'){const f=Array.isArray(m.filter)?m.filter:[];h+=`<p>Gewählte Items laufen <b>nach vorne</b>, alle anderen abwechselnd zu den <b>Seiten</b>. Ohne Auswahl geht alles zur Seite.</p><p class="mut">Status: ${esc(m.status||'')}</p><h3>Nach vorne (${f.length})</h3><div class="recs"><button class="rec ${f.length?'':'on'}" data-act="filter:off">Nichts</button>${Object.keys(ITEMS).map(k=>`<button class="rec ${f.includes(k)?'on':''}" data-act="filter:${k}">${ITEMS[k][0]}</button>`).join('')}</div>`}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>
    <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3>${m.outs.length>1?'<p class="mut">Links/rechts gesehen, wenn du vor den orangen Pfeilen stehst und auf das Lager schaust. „Alles“ gibt alles aus, was kein anderer Ausgang ausgibt.</p>':''}<p class="mut">Mehrere Items pro Ausgang wählbar (nochmal klicken = abwählen), sie kommen abwechselnd heraus.</p>
    ${m.outs.map((p,i)=>{const cur=m.disp[i],on=k=>k==='off'?!cur:k==='all'?cur==='all':Array.isArray(cur)&&cur.includes(k);const opts=[['off','Aus'],['all','Alles'],...[...new Set([...Object.keys(m.inBuf),...(Array.isArray(cur)?cur:[])])].map(k=>[k,ITEMS[k][0]])];
@@ -613,13 +660,14 @@ $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
  if(m&&PANEL_ACTS.includes(act)){if(net.role==='client')netSend({t:'act',a:'panel',k:m.cells[0],act,arg});else panelAct(m,act,arg)}
  renderPanel();renderHotbar()});
-const PANEL_ACTS=['wave','rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
+const PANEL_ACTS=['filter','wave','rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
 function panelAct(m,act,arg){
+ if(act==='filter'){if(m.type!=='sorter'||typeof arg!=='string')return;if(arg==='off'){m.filter=null;return}if(!own(ITEMS,arg))return;const c=Array.isArray(m.filter)?m.filter:[];const l=c.includes(arg)?c.filter(x=>x!==arg):[...c,arg].slice(0,12);m.filter=l.length?l:null;return}
  if(act==='wave'){if(BUILD[m.type].fixed&&td.path&&!waveActive())startWave();return}
  if(act==='craft'){const t=+arg;if(m.type==='workbench'&&TOOLREC[t]&&has(TOOLREC[t])&&tier===t-1){for(const k in TOOLREC[t])add(k,-TOOLREC[t][k]);tier=t;m.pulse=1.4;toast(TOOLS[t].n+' hergestellt')}}
  if(act==='recipe'){const i=+arg,n=BUILD[m.type].miner?2:RECIPES[m.type]?RECIPES[m.type].length:0;if(isInt(i,0,n-1)&&i!==m.recipe){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};m.recipe=i;m.t=0}}
  if(act==='rename'){if(BUILD[m.type].beacon&&typeof arg==='string'){m.name=cleanName(arg);toast('Barke heißt jetzt „'+m.name+'“')}return}
- if(act==='gadget'){const g=GADGETS[arg];if(m.type==='workbench'&&g&&own(GADGETS,arg)&&!gadgets[arg]&&has(g.cost)){for(const k in g.cost)add(k,-g.cost[k]);gadgets[arg]=true;m.pulse=1.4;toast(g.n+' hergestellt'+(arg==='radar'?' – Taste F':''))}return}
+ if(act==='gadget'){const g=GADGETS[arg];if(m.type==='workbench'&&g&&own(GADGETS,arg)&&!gadgets[arg]&&(!g.req||gadgets[g.req])&&has(g.cost)){for(const k in g.cost)add(k,-g.cost[k]);gadgets[arg]=true;updateBeltSpeed();m.pulse=1.4;toast(g.n+' hergestellt'+({radar:' – Taste F',nv:' – Taste N',blaster:' – Taste G',jetpack:' – Leertaste in der Luft halten'}[arg]||''))}return}
  if(act==='purge'){purgeInputs(m);return}
  if(act==='disp'){if(!BUILD[m.type].store||typeof arg!=='string')return;const[pi,k]=arg.split('.');const i=+pi;if(!isInt(i,0,m.outs.length-1))return;if(k==='off')m.disp[i]=null;else if(k==='all')m.disp[i]='all';else if(own(ITEMS,k)){const c=Array.isArray(m.disp[i])?m.disp[i]:[];const l=c.includes(k)?c.filter(x=>x!==k):[...c,k].slice(0,12);m.disp[i]=l.length?l:null}return}
  if(act==='takeall'&&BUILD[m.type].store){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};return}
@@ -649,7 +697,9 @@ addEventListener('keydown',e=>{
  if(e.code==='KeyI'||e.code==='Tab')openPanel('inv');
  if(e.code==='KeyR'&&buildType)rotOff=(rotOff+1)%4;
  if(e.code==='KeyF')cycleRadar(e.shiftKey);
- if(e.code==='KeyE'){const h=raycast(6);if(h&&h.id===MACH){const m=machineAt.get(idx(h.x,h.y,h.z));if(m&&m.type!=='belt'&&!BUILD[m.type].bridge&&!BUILD[m.type].router){buildType=null;openPanel('machine',m)}}}});
+ if(e.code==='KeyG'){if(gadgets.blaster)shootBlaster();else toast('Blaster an der Werkbank herstellen')}
+ if(e.code==='KeyN'){if(gadgets.nv){nvOn=!nvOn;toast('Nachtsicht '+(nvOn?'an':'aus'))}else toast('Nachtsicht an der Werkbank herstellen')}
+ if(e.code==='KeyE'){const h=raycast(6);if(h&&h.id===MACH){const m=machineAt.get(idx(h.x,h.y,h.z));if(m&&m.type!=='belt'&&!BUILD[m.type].bridge&&(!BUILD[m.type].router||m.type==='sorter')){buildType=null;openPanel('machine',m)}}}});
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',releaseMouse);
 // Kamera dreht nur bei gedrückter rechter Maustaste; ein kurzer Rechtsklick ohne Ziehen setzt einen Block bzw. bricht den Baumodus ab.
@@ -696,7 +746,7 @@ function dragBelt(){const k=place.ox+','+place.oy+','+place.oz;if(k===lastBelt||
 // ---------- Speichern / Laden ----------
 function snapshot(){return{v:2,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,defeats:td.defeats,kills:td.kills,path:td.path,
   en:enemies.map(e=>[e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)]),q:spawnQ.map(q=>q.ty)},seed,dv:1,changes:[...changes],res:[...reserves],inv,tier,gadgets,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
- machines:machines.map(m=>{const o={...m.outBuf};for(const it of m.tr)o[it.item]=(o[it.item]||0)+1;return{t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o,rc:m.recipe,ds:m.disp&&m.disp.some(Boolean)?m.disp:undefined,nm:m.name||undefined}}),
+ machines:machines.map(m=>{const o={...m.outBuf};for(const it of m.tr)o[it.item]=(o[it.item]||0)+1;return{t:m.type,x:m.x,y:m.y,z:m.z,r:m.rot,i:m.inBuf,o,rc:m.recipe,ds:m.disp&&m.disp.some(Boolean)?m.disp:undefined,fl:m.filter||undefined,nm:m.name||undefined}}),
  belts:[...belts.values()].map(b=>[b.x,b.y,b.z,b.dir,b.items.map(i=>i.item)])}}
 function save(){if(net.role==='client'){toast('Im Koop speichert der Host');return false}try{const data=snapshot();
  localStorage.setItem(KEY,JSON.stringify(data));lastSave=new Date();toast('Spiel gespeichert');saveFeedback(true);return true}catch(e){toast('Speichern in diesem Browser nicht möglich');saveFeedback(false);return false}}
@@ -724,13 +774,13 @@ function sanitize(d){
  const o={seed:d.seed,dv:d.dv===1?1:0,changes:[],res:[],machines:[],belts:[]};
  for(const c of arr(d.changes))if(Array.isArray(c)&&isInt(c[1],0,NBL)){const k=conv(c[0]);if(k>=0&&kY(k)<H)o.changes.push([k,c[1]])}
  for(const c of arr(d.res))if(Array.isArray(c)&&isInt(c[1],1,RESERVE)){const k=conv(c[0]);if(k>=0)o.res.push([k,c[1]])}
- o.inv=cleanBag(d.inv,1e9);o.td=cleanTd(d.td);o.gadgets={radar:!!(d.gadgets&&d.gadgets.radar===true)};o.tier=isInt(d.tier,0,4)?d.tier:0;o.goal=isInt(d.goal,0,GOALS.length-1)?d.goal:0;
+ o.inv=cleanBag(d.inv,1e9);o.td=cleanTd(d.td);o.gadgets=cleanGadgets(d.gadgets);o.tier=isInt(d.tier,0,5)?d.tier:0;o.goal=isInt(d.goal,0,GOALS.length-1)?d.goal:0;
  const st=d.stats&&typeof d.stats==='object'?d.stats:{};o.stats={delivered:isInt(st.delivered,0,1e12)?st.delivered:0,produced:cleanBag(st.produced,1e12)};
  const p=d.P&&typeof d.P==='object'?d.P:{};o.P={};
  for(const[k,a,b]of[['x',-LIM,LIM],['y',-5,H+5],['z',-LIM,LIM],['yaw',-1e6,1e6],['pitch',-1.55,1.55]])if(isNum(p[k],a,b))o.P[k]=p[k];
  for(const m of arr(d.machines)){if(!m||typeof m!=='object'||!own(BUILD,m.t)||m.t==='belt')continue;
   if(!isXZ(m.x)||!isInt(m.y,1,H-1)||!isXZ(m.z)||!isInt(m.r,0,3))continue;
-  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0,nm:BUILD[m.t].beacon&&typeof m.nm==='string'?cleanName(m.nm):undefined,ds:BUILD[m.t].store?(Array.isArray(m.ds)?m.ds.slice(0,3).map(dispOk):[0,1,2].map(()=>dispOk(m.ds))):null})}
+  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:BUILD[m.t].miner&&isInt(m.rc,0,1)?m.rc:0,nm:BUILD[m.t].beacon&&typeof m.nm==='string'?cleanName(m.nm):undefined,ds:BUILD[m.t].store?(Array.isArray(m.ds)?m.ds.slice(0,3).map(dispOk):[0,1,2].map(()=>dispOk(m.ds))):null,fl:m.t==='sorter'?dispOk(m.fl):null})}
  for(const b of arr(d.belts)){if(!Array.isArray(b)||!isXZ(b[0])||!isInt(b[1],1,H-1)||!isXZ(b[2])||!isInt(b[3],0,3))continue;
   o.belts.push([b[0],b[1],b[2],b[3],arr(b[4]).filter(k=>typeof k==='string'&&own(ITEMS,k)).slice(0,4)])}
  return o}
@@ -746,13 +796,13 @@ function newWorld(s,data){clearAll();seed=s;computeSpawn();td={day:1,t:.08,wave:
  P.x=64.5;P.z=64.5;P.y=surfaceH(64,64)+1;P.vy=0;P.yaw=0;P.pitch=-.15;
  if(data){if(data.td){const t=data.td;Object.assign(td,{day:t.day,t:t.t,wave:t.wave,hp:t.hp,every:t.every,defeats:t.defeats,kills:t.kills,path:t.path});buildPathIndex()}
   for(const[i,id]of data.changes)recordChange(i,id);for(const[i,r]of data.res)reserves.set(i,r);
-  inv=data.inv||{};tier=data.tier||0;gadgets=data.gadgets||{radar:false};stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
+  inv=data.inv||{};tier=data.tier||0;gadgets=cleanGadgets(data.gadgets);stats=data.stats||stats;goal=data.goal||0;Object.assign(P,data.P||{});
   for(const m of data.machines){if(!data.dv&&BUILD[m.t]&&BUILD[m.t].store&&(!m.ds||(Array.isArray(m.ds)&&m.ds.every(v=>!v))))m.ds='all';if(clearFor(m.t,m.x,m.y,m.z,m.r))createMachine(m.t,m.x,m.y,m.z,m.r,m)}
   for(const b of data.belts)if(clearFor('belt',b[0],b[1],b[2],b[3]))createMachine('belt',b[0],b[1],b[2],b[3],b[4])}
  if(data&&data.td){const t=data.td;
   if(td.path){for(const[ty,sv,hp,mx]of t.en){const e=spawnEnemy(ty,mx,0,Math.min(sv,route.length-1));e.hp=hp}spawnQ=t.q.map((ty,i)=>({ty,t:i*1.6}));waveT=0}}
  if(!data){placeBaseTower();const tw=machines.find(m=>m.type==='tower');if(tw){makePath(tw);placeStarterBallista()}}
- stream(0,250);dirty.clear();renderHotbar();renderGoal()}
+ updateBeltSpeed();stream(0,250);dirty.clear();renderHotbar();renderGoal()}
 // Neues Spiel: Basisturm steht schon (3×3, 15 hoch) nordöstlich des Startpunkts, Fundament wird aufgefüllt.
 function placeBaseTower(ox=69,oz=57){let top=0;for(let x=ox;x<ox+3;x++)for(let z=oz;z<oz+3;z++)top=Math.max(top,surfaceH(x,z));const y=top+1;
  for(let x=ox;x<ox+3;x++)for(let z=oz;z<oz+3;z++){for(let yy=surfaceH(x,z)+1;yy<y;yy++)setBlock(x,yy,z,3,true);for(let yy=y;yy<y+15&&yy<H;yy++)if(get(x,yy,z))setBlock(x,yy,z,0,true)}
@@ -801,8 +851,9 @@ const isNight=t=>t>=NIGHT;
 function lightLevel(t){if(t<.05)return .22+.78*sstep(0,.05,t);if(t<.6)return 1;if(t<.68)return 1-.78*sstep(.6,.68,t);return .22}
 function clockStr(t){const h=t<NIGHT?6+t/NIGHT*13:19+(t-NIGHT)/(1-NIGHT)*11;const hh=Math.floor(h)%24,mm=Math.floor((h%1)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0')}
 const DAYSKY=new THREE.Color(0x9fd4f5),NIGHTSKY=new THREE.Color(0x0b1426),skyCol=new THREE.Color();
+let nvOn=true;
 function applyLight(){const k=(lightLevel(td.t)-.22)/.78;skyCol.copy(NIGHTSKY).lerp(DAYSKY,k);scene.background.copy(skyCol);scene.fog.color.copy(skyCol);
- terrainMat.color.setScalar(.33+.67*k);hemi.intensity=.22+.58*k;sun.intensity=.08+.57*k;const a=td.t*Math.PI*2;sun.position.set(Math.cos(a)*.8,.35+Math.max(0,Math.sin(a+.4)),.3)}
+ const kv=nvOn&&gadgets.nv?Math.max(k,.72):k;terrainMat.color.setScalar(.33+.67*kv);hemi.intensity=.22+.58*kv;sun.intensity=.08+.57*kv;const a=td.t*Math.PI*2;sun.position.set(Math.cos(a)*.8,.35+Math.max(0,Math.sin(a+.4)),.3)}
 // Fester Pfad: vom Turm nach Norden mit Seitenschwenks, 3 breit, Höhe geglättet (max ±1 je Feld). Pfadstein ist unzerstörbar.
 function makePath(t){const rnd=mulberry(hashI(t.x,t.z,777));let x=t.x+1,z=t.z-2;const pts=[[x,z]];let dir=2;
  while(pts.length<95){const len=dir===2?6+Math.floor(rnd()*9):3+Math.floor(rnd()*6);for(let i=0;i<len&&pts.length<95;i++){x+=DIRS[dir][0];z+=DIRS[dir][1];pts.push([x,z])}dir=dir===2?(rnd()<.5?1:3):2}
@@ -856,17 +907,30 @@ function startWave(){waveAlarm=4;td.wave++;spawnQ=waveList(td.wave).map((ty,i)=>
 function baseFallen(){for(const e of[...enemies])removeEnemy(e,true);spawnQ=[];td.hp=TOWER_HP/2;td.defeats++;toast('Die Basis ist gefallen! Der Turm steht wieder mit halber Kraft.')}
 function damageEnemy(e,d){e.hp-=d;if(e.pos)emit(new THREE.Vector3(e.pos.x,e.pos.y+.8,e.pos.z),'spark');
  if(e.hp<=0){removeEnemy(e,true);td.kills++;const r=['iron_ore','copper_ore','coal'][Math.floor(Math.random()*3)];add(r,1+(Math.random()<.3?1:0));renderHotbar()}}
-const shotMat={bolt:new THREE.MeshLambertMaterial({color:0x8a5a2b}),bullet:new THREE.MeshBasicMaterial({color:0xffd24a}),laser:new THREE.MeshBasicMaterial({color:0xff3b6b,transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false})};
+const shotMat={tesla:new THREE.MeshBasicMaterial({color:0x8fe3ff,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}),shell:new THREE.MeshLambertMaterial({color:0x3a3d33}),blaster:new THREE.MeshBasicMaterial({color:0x6bffb0,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false}),bolt:new THREE.MeshLambertMaterial({color:0x8a5a2b}),bullet:new THREE.MeshBasicMaterial({color:0xffd24a}),laser:new THREE.MeshBasicMaterial({color:0xff3b6b,transparent:true,opacity:.85,blending:THREE.AdditiveBlending,depthWrite:false})};
 function fire(m,e,T){const mz=m.a.muzzle||[0,1,0],from={x:m.x+m.rw/2,y:m.y+mz[1],z:m.z+m.rd/2},p=e.pos,dist=Math.hypot(p.x-from.x,p.y+.8-from.y,p.z-from.z);
- const mesh=new THREE.Mesh(BOX,shotMat[T.kind]);if(T.kind==='bolt')mesh.scale.set(.07,.07,.6);else if(T.kind==='bullet')mesh.scale.set(.08,.08,.35);scene.add(mesh);
- shots.push({id:e.id,from,dmg:T.dmg,t:0,dur:T.kind==='laser'?.09:Math.max(.05,dist/T.spd),kind:T.kind,mesh})}
+ if(T.chain){let last=e;const hit=[e];while(hit.length<T.chain){let nb=null,bd=6;for(const q of enemies)if(q.pos&&!hit.includes(q)){const d=Math.hypot(q.pos.x-last.pos.x,q.pos.z-last.pos.z);if(d<bd){bd=d;nb=q}}if(!nb)break;hit.push(nb);last=nb}
+  let fr=from;for(const q of hit){const mesh=new THREE.Mesh(BOX,shotMat.tesla);scene.add(mesh);shots.push({id:q.id,from:fr,dmg:T.dmg,t:0,dur:.12,kind:'tesla',mesh});fr={x:q.pos.x,y:q.pos.y+.8,z:q.pos.z}}return}
+ const mesh=new THREE.Mesh(BOX,shotMat[T.kind]);if(T.kind==='bolt')mesh.scale.set(.07,.07,.6);else if(T.kind==='bullet')mesh.scale.set(.08,.08,.35);else if(T.kind==='shell')mesh.scale.set(.28,.28,.28);scene.add(mesh);
+ shots.push({id:e.id,from,dmg:T.dmg,t:0,dur:T.kind==='laser'?.09:Math.max(.05,dist/T.spd),kind:T.kind,mesh,splash:T.splash||0,arc:T.kind==='shell'?Math.min(6,dist*.35):0})}
 const lookV=new THREE.Vector3();
 function updateShots(dt,client){for(let i=shots.length-1;i>=0;i--){const s=shots[i];s.t+=dt;const e=enemies.find(q=>q.id===s.id);
  if(!e||!e.pos){scene.remove(s.mesh);shots.splice(i,1);continue}const tx=e.pos.x,ty=e.pos.y+.8*ETYPES[e.ty].sc,tz=e.pos.z,f=Math.min(1,s.t/s.dur);
- if(s.kind==='laser'){const mx=(s.from.x+tx)/2,my=(s.from.y+ty)/2,mz=(s.from.z+tz)/2,len=Math.hypot(tx-s.from.x,ty-s.from.y,tz-s.from.z);s.mesh.position.set(mx,my,mz);s.mesh.scale.set(.07,.07,len);s.mesh.lookAt(lookV.set(tx,ty,tz))}
- else{s.mesh.position.set(s.from.x+(tx-s.from.x)*f,s.from.y+(ty-s.from.y)*f,s.from.z+(tz-s.from.z)*f);s.mesh.lookAt(lookV.set(tx,ty,tz))}
- if(s.t>=s.dur){scene.remove(s.mesh);shots.splice(i,1);if(!client)damageEnemy(e,s.dmg)}}}
-function updateTurrets(dt,client){for(const m of machines){const T=BUILD[m.type].turret;if(!T)continue;m.cd=(m.cd||0)-dt;
+ if(s.kind==='laser'||s.kind==='tesla'){const mx=(s.from.x+tx)/2,my=(s.from.y+ty)/2,mz=(s.from.z+tz)/2,len=Math.hypot(tx-s.from.x,ty-s.from.y,tz-s.from.z);s.mesh.position.set(mx,my,mz);s.mesh.scale.set(.07,.07,len);s.mesh.lookAt(lookV.set(tx,ty,tz))}
+ else{s.mesh.position.set(s.from.x+(tx-s.from.x)*f,s.from.y+(ty-s.from.y)*f+Math.sin(Math.PI*f)*(s.arc||0),s.from.z+(tz-s.from.z)*f);s.mesh.lookAt(lookV.set(tx,ty,tz))}
+ if(s.t>=s.dur){scene.remove(s.mesh);shots.splice(i,1);
+  if(s.splash){const c=new THREE.Vector3(tx,ty,tz);for(let k=0;k<5;k++)emit(c,'dark');if(!client)for(const q of[...enemies])if(q.pos&&Math.hypot(q.pos.x-tx,q.pos.z-tz)<=s.splash)damageEnemy(q,s.dmg)}
+  else if(!client)damageEnemy(e,s.dmg)}}}
+// Blaster (Gerät): trifft den Gegner, der dem Zielstrahl am nächsten liegt
+let blastCD=0;
+function aimEnemy(){camera.updateMatrixWorld();aimV.set(mouse.x,mouse.y,.5).unproject(camera).sub(camera.position).normalize();const o=camera.position;let best=null,bd=1e9;
+ for(const e of enemies){if(!e.pos)continue;const vx=e.pos.x-o.x,vy=e.pos.y+.8*ETYPES[e.ty].sc-o.y,vz=e.pos.z-o.z,t=vx*aimV.x+vy*aimV.y+vz*aimV.z;if(t<0||t>40)continue;
+  const px=vx-aimV.x*t,py=vy-aimV.y*t,pz=vz-aimV.z*t,off=Math.hypot(px,py,pz);if(off<1.1+t*.02&&t<bd){bd=t;best=e}}return best}
+function shootBlaster(){if(!gadgets.blaster||blastCD>0)return;blastCD=.35;const e=aimEnemy();const o=camera.position,from={x:o.x,y:o.y-.25,z:o.z};
+ if(!e){toast('Kein Gegner im Visier');return}const mesh=new THREE.Mesh(BOX,shotMat.blaster);scene.add(mesh);
+ shots.push({id:e.id,from,dmg:net.role==='client'?0:25,t:0,dur:.08,kind:'laser',mesh});if(net.role==='client')netSend({t:'act',a:'shoot',id:e.id})}
+let hostBlastT=0;
+function updateTurrets(dt,client){blastCD=Math.max(0,blastCD-dt);hostBlastT=Math.max(0,hostBlastT-dt);for(const m of machines){const T=BUILD[m.type].turret;if(!T)continue;m.cd=(m.cd||0)-dt;
  const cx=m.x+m.rw/2,cz=m.z+m.rd/2,cy=m.y+(m.a.muzzle?m.a.muzzle[1]:1);let best=null;
  for(const e of enemies){if(!e.pos)continue;const d=Math.hypot(e.pos.x-cx,e.pos.y+.8-cy,e.pos.z-cz);if(d<=T.range&&(!best||e.s>best.s))best=e}
  m.working=!!best;if(m.a.head&&best)m.a.head.rotation.y=Math.atan2(best.pos.x-cx,best.pos.z-cz)-m.g.rotation.y;
@@ -937,7 +1001,7 @@ const viewScene=new THREE.Scene(),viewCam=new THREE.PerspectiveCamera(70,innerWi
 viewScene.add(new THREE.HemisphereLight(0xf2f6ff,0x5a5048,.85));{const l=new THREE.DirectionalLight(0xffffff,.55);l.position.set(-1,2,1.5);viewScene.add(l)}
 const vmPivot=new THREE.Group();vmPivot.position.set(.42,-.5,-.32);viewScene.add(vmPivot);
 let vmKey='',vmSwing=0,vmBob=0,vmPunch=0,vmEquip=0;
-const TOOLCOL=[null,0xa0703f,0x8d9094,0xd0d4d8,0x52677c];
+const TOOLCOL=[null,0xa0703f,0x8d9094,0xd0d4d8,0x52677c,0x6fd0d8];
 function vb(g,c,w,h,d,x,y,z,e){const me=new THREE.Mesh(BOX,new THREE.MeshLambertMaterial({color:c,emissive:e?c:0,emissiveIntensity:e?.6:0}));me.scale.set(w,h,d);me.position.set(x,y,z);g.add(me);return me}
 function buildViewModel(key){vmPivot.clear();const sleeve=net.role==='solo'?PCOL[0]:PCOL[net.id];
  vb(vmPivot,sleeve,.17,.17,.5,0,0,-.22);vb(vmPivot,0x33373c,.18,.05,.18,0,0,-.47);vb(vmPivot,0xe0b48c,.15,.15,.16,0,0,-.57);
@@ -946,7 +1010,7 @@ function buildViewModel(key){vmPivot.clear();const sleeve=net.role==='solo'?PCOL
   vb(hold,0xf29a2e,.12,.008,.04,-.05,.08,-.06,1);vb(hold,0xf29a2e,.04,.008,.08,.06,.08,.02,1)}
  else if(tier>0){hold.rotation.set(-.55,0,-.42);hold.scale.setScalar(.72);vb(hold,0x7a5232,.045,.62,.045,0,.16,0);const hc=TOOLCOL[tier];
   vb(hold,hc,.46,.075,.075,0,.45,0);const l=vb(hold,hc,.16,.06,.06,-.27,.41,0);l.rotation.z=.45;const r=vb(hold,hc,.16,.06,.06,.27,.41,0);r.rotation.z=-.45;
-  if(tier===4){vb(hold,0x9fd4ff,.06,.08,.08,0,.45,0,1)}}
+  if(tier>=4){vb(hold,tier===5?0xb9f2ee:0x9fd4ff,.06,.08,.08,0,.45,0,1)}}
  else{vb(vmPivot,0xd8a77f,.16,.07,.08,0,.03,-.62)} // Faust
  vmEquip=1}
 function updateViewModel(dt){
@@ -1132,12 +1196,13 @@ function applyAction(d){const ok3=()=>isXZ(d.x)&&isInt(d.y,1,H-1)&&isXZ(d.z);
  if(d.a==='mine'){if(!ok3())return;const id=get(d.x,d.y,d.z);if(!id||id>=200||!BL[id]||BL[id].tier>tier)return;doMine(d.x,d.y,d.z,id)}
  else if(d.a==='place'){if(!ok3()||!isInt(d.slot,0,PLACE.length-1))return;const[it,id]=PLACE[d.slot];if(!inv[it]||get(d.x,d.y,d.z)||pathSet.has(idx(d.x,d.y,d.z)))return;add(it,-1);setBlock(d.x,d.y,d.z,id,true)}
  else if(d.a==='build'){if(typeof d.type!=='string'||!own(BUILD,d.type)||!ok3()||!isInt(d.r,0,3))return;if(checkPlace(d.type,d.x,d.y,d.z,d.r,true))return;doBuild(d.type,d.x,d.y,d.z,d.r)}
+ else if(d.a==='shoot'){if(!gadgets.blaster||!isInt(d.id,0,1e9)||hostBlastT>0)return;const e=enemies.find(q=>q.id===d.id);if(e){hostBlastT=.12;damageEnemy(e,25)}}
  else if(d.a==='rm'){if(!isKey(d.i))return;const t=belts.get(d.i)||machineAt.get(d.i);if(t&&!(t.type&&BUILD[t.type].fixed))removeBuilding(t)}
  else if(d.a==='bdir'){if(!isKey(d.i)||!isInt(d.d,0,3))return;const b=belts.get(d.i);if(b)setBeltDir(b,d.d)}
  else if(d.a==='panel'){if(!isKey(d.k)||!PANEL_ACTS.includes(d.act))return;const m=machineAt.get(d.k);if(m&&(typeof d.arg==='string'||d.arg===undefined))panelAct(m,d.act,d.arg)}
  renderHotbar()}
 function syncMsg(){return{t:'sync',inv,tier,goal,gadgets,td:{day:td.day,t:+td.t.toFixed(4),wave:td.wave,hp:Math.round(td.hp),every:td.every,kills:td.kills,defeats:td.defeats,en:enemies.map(e=>[e.id,e.ty,+e.s.toFixed(2),Math.round(e.hp),Math.round(e.max)])},
- m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1]),m.disp||0,m.name||0,m.ps||0]),
+ m:machines.map(m=>[m.cells[0],m.inBuf,m.outBuf,m.recipe,+m.t.toFixed(2),m.working?1:0,m.tr.map(x=>[x.item,+(x.t||0).toFixed(2),x.pi??-1]),m.disp||0,m.name||0,m.ps||0,m.filter||0]),
  b:[...belts.entries()].map(([k,b])=>[k,b.items.map(i=>[i.item,+i.p.toFixed(2)])])}}
 // --- Mitspieler ---
 // Gast: Verbindungsaufbau in Schritten mit Diagnose
@@ -1186,10 +1251,11 @@ function applyEvent(e){if(!e||typeof e!=='object')return;
  else if(e.t==='build'&&typeof e.type==='string'&&own(BUILD,e.type)&&isXZ(e.x)&&isInt(e.y,1,H-1)&&isXZ(e.z)&&isInt(e.r,0,3)){if(fits(e.type,e.x,e.y,e.z,e.r))createMachine(e.type,e.x,e.y,e.z,e.r)}
  else if(e.t==='rm'&&isKey(e.i)){const t=belts.get(e.i)||machineAt.get(e.i);if(t)removeBuilding(t)}
  else if(e.t==='bdir'&&isKey(e.i)&&isInt(e.d,0,3)){const b=belts.get(e.i);if(b)setBeltDir(b,e.d)}}
-function applySync(d){applyTdSync(d.td);inv=cleanBag(d.inv,1e9);gadgets={radar:!!(d.gadgets&&d.gadgets.radar===true)};if(isInt(d.tier,0,4))tier=d.tier;if(isInt(d.goal,0,GOALS.length-1))goal=d.goal;
+function applySync(d){applyTdSync(d.td);inv=cleanBag(d.inv,1e9);gadgets=cleanGadgets(d.gadgets);updateBeltSpeed();if(isInt(d.tier,0,5))tier=d.tier;if(isInt(d.goal,0,GOALS.length-1))goal=d.goal;
  for(const r of arr(d.m)){if(!Array.isArray(r)||!isKey(r[0]))continue;const m=machineAt.get(r[0]);if(!m)continue;const def=BUILD[m.type];
   m.inBuf=cleanBag(r[1],def.store||1e5);m.outBuf=cleanBag(r[2],1e5);if(isInt(r[3],0,9))m.recipe=r[3];if(isNum(r[4],0,1e4))m.t=r[4];m.working=!!r[5];
   if(def.beacon&&typeof r[8]==='string')m.name=cleanName(r[8]);
+  if(m.type==='sorter')m.filter=dispOk(r[10]);
   if(def.store){m.disp=normDisp(r[7],m.outs.length);if(Array.isArray(r[9]))m.ps=m.outs.map((_,i)=>typeof r[9][i]==='string'?r[9][i].slice(0,60):'')}
   m.tr=arr(r[6]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])).slice(0,def.bridge?def.d*3:4).map(x=>({item:x[0],t:isNum(x[1],0,1e4)?x[1]:0,pi:isInt(x[2],0,2)?x[2]:undefined}))}
  for(const r of arr(d.b)){if(!Array.isArray(r)||!isKey(r[0]))continue;const b=belts.get(r[0]);if(!b)continue;

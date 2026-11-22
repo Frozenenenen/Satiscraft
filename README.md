@@ -23,6 +23,9 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 | E | Maschine öffnen |
 | I | Inventar |
 | F / Shift+F | Erzradar: nächste Erzart / zurück (Kohle, Kupfer, Eisen, Gold, Titan, aus). Das Radar stellst du an der Werkbank her (4 Kupferbarren, 2 Eisenbarren). |
+| G | Blaster abfeuern (Gerät) |
+| N | Nachtsicht an/aus (Gerät) |
+| Leertaste in der Luft halten | Jetpack (Gerät) |
 
 ## Spielprinzip
 
@@ -38,6 +41,14 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Splitter und Merger:** Der Splitter (1 Eingang, 3 Ausgänge) verteilt reihum auf alle freien Ausgänge. Der Merger (3 Eingänge, 1 Ausgang) nimmt reihum von jedem Eingang. Beide kannst du direkt auf ein liegendes Band setzen: Das Band wird ersetzt, und die Laufrichtung wird übernommen.
 - **Bänder kreuzen:** Die Förderbandbrücke ist 3 Felder lang und überspannt 1 Feld, die lange Brücke ist 5 lang und überspannt 3. Unter dem Bogen kann ein anderes Band durchlaufen. Alternativ baust du die Brücke selbst aus Blöcken: Bänder steigen und fallen pro Feld um einen Block und werden dabei als Rampe dargestellt.
 - **Lager:** Die Lagerkiste (1×1, 999 Items) nimmt aus jeder Richtung an. Der Lagercontainer (2×2, 1.500 Items, 4 Eingänge) und das Industrielager (3×3, 5.000 Items, 5 Eingänge) nehmen nur an ihren markierten Eingängen an. Alle Lager sind auch Dispenser: Sie haben vorne Ausgänge (Kiste 1, Container 2, Industrielager 3). Im Lagerfenster stellst du die Ausgabe auf Aus, Alles oder ein bestimmtes Item.
+- **Späte Produktion:**
+  - Konstruktor: Eisenstange → Schrauben, Stahl → Zahnräder, Draht → Kabel, Titanbarren → Titanplatte, Quarzkristall → Linse.
+  - Schmelzofen: Kohle → Koks. Gießerei: Eisenerz + Koks → 3 Stahl (effizienter), Titan- + Aluminiumbarren → Titanlegierung.
+  - Monteur: Platten + Schrauben → verstärkte Platte, Stangen + Schrauben → Rotor, Alublech + Kupferblech → Batterie, Stahl + Koks → Granaten.
+  - **Fertiger** (3×3, 4 Eingänge): Computer, schwerer Rahmen, Turbomotor.
+- **Schnellere Maschinen:** Hochofen (2× Schmelzofen) und Präzisionskonstruktor (2,5× Konstruktor), beide mit 2 Eingängen.
+- **Sortierer:** Gewählte Items gehen nach vorne, der Rest abwechselnd zur Seite. Auswahl mit E.
+- **Ausrüstung (Werkbank):** Erzradar, Sprintstiefel, Sprungfedern, Jetpack, Nachtsicht, Blaster, Förderband Mk2/Mk3 (alle Bänder schneller), Titanspitzhacke (schnellster Abbau).
 - **Meilensteine:** Oben links steht jeweils der nächste Schritt.
 - **Speichern:** Der Spielstand wird im `localStorage` des Browsers gespeichert.
 
@@ -59,6 +70,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
   - Die Balliste braucht keine Munition.
   - Der Geschützturm braucht Munition. Der Konstruktor macht aus 1 Eisenstange 6 Munition, du lieferst sie per Band oder legst sie mit E ein.
   - Der Laserturm ist spät baubar und braucht keine Munition.
+  - Der Mörser schießt Granaten mit Flächenschaden, der Teslaturm trifft per Kettenblitz bis zu 4 Gegner.
   - Auf und über dem Pfad kann nicht gebaut werden.
 - **Basis:** Der Turm hat 1000 Lebenspunkte und regeneriert sich tagsüber. Fällt er, verschwinden die Gegner, und er steht mit halber Kraft wieder. Besiegte Gegner hinterlassen etwas Erz.
 - **Ältere Spielstände:** Im Pause-Menü kannst du für sie die Turmverteidigung nachträglich einrichten.
