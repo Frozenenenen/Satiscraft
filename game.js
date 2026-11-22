@@ -28,7 +28,7 @@ const BUILD={
  chest:{n:'Lagerkiste',w:1,d:1,h:1,cost:{wood:6},ins:'all',outs:[],store:999,desc:'Nimmt Items von Bändern aus jeder Richtung auf. Fasst 999 Items.'},
  container:{n:'Lagercontainer',w:2,d:2,h:2,cost:{wood:20,iron_bar:8},ins:[[0,-1,0],[1,-1,0],[-1,0,3],[2,0,1]],outs:[],store:1500,desc:'Großes Lager mit 4 Eingängen (hinten 2, seitlich je 1). Fasst 1.500 Items.'},
  warehouse:{n:'Industrielager',w:3,d:3,h:2,cost:{iron_plate:20,steel:5},ins:[[0,-1,0],[1,-1,0],[2,-1,0],[-1,1,3],[3,1,1]],outs:[],store:5000,desc:'Sehr großes Lager mit 5 Eingängen (hinten 3, seitlich je 1). Fasst 5.000 Items.'},
- belt:{n:'Förderband',w:1,d:1,h:1,cost:{copper_bar:1},ins:[],outs:[],desc:'Läuft in Blickrichtung. LMB halten zum Ziehen. Stufen ±1 Block möglich.'},
+ belt:{n:'Förderband',w:1,d:1,h:1,cost:{copper_bar:1},ins:[],outs:[],desc:'Klick setzt ein Band in Blickrichtung. Shift + Ziehen legt eine Linie, die der Zugrichtung folgt (auch Kurven). Stufen ±1 Block möglich.'},
  bridge1:{n:'Förderbandbrücke',w:1,d:3,h:2,cost:{iron_bar:4,copper_bar:2},ins:[[0,-1,0]],outs:[[0,3,0]],bridge:1,desc:'Überspannt 1 Feld: Darunter kann ein Band quer durchlaufen. Eingang hinten, Ausgang vorne.'},
  bridge3:{n:'Lange Förderbandbrücke',w:1,d:5,h:2,cost:{iron_plate:6,rod:4},ins:[[0,-1,0]],outs:[[0,5,0]],bridge:1,desc:'Überspannt 3 Felder für mehrere Bänder oder Hindernisse.'},
  smelter:{n:'Schmelzofen',w:2,d:2,h:2,cost:{stone:20,coal:5},ins:[[0,-1,0]],outs:[[1,2,0]],auto:1,desc:'Erz → Barren. Wählt das Rezept automatisch.'},
@@ -437,9 +437,9 @@ document.addEventListener('mousemove',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse
  if(!locked||!mouseR)return;dragDist+=Math.abs(e.movementX)+Math.abs(e.movementY);
  if(dragDist>4)canvas.classList.add('drag');P.yaw-=e.movementX*.004;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.004))});
 canvas.addEventListener('mousedown',e=>{if(!locked)return;
- if(e.button===0){mouseL=true;if(buildType&&buildType!=='belt')tryPlace()}
+ if(e.button===0){mouseL=true;if(buildType){const b=tryPlace();if(buildType==='belt'){lastBeltObj=b||null;lastBelt=place?place.ox+','+place.oy+','+place.oz:''}}}
  if(e.button===2){mouseR=true;dragDist=0}});
-document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt=''}
+document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt='';lastBeltObj=null}
  if(e.button===2&&mouseR){mouseR=false;canvas.classList.remove('drag');if(locked&&dragDist<=4){if(buildType)buildType=null;else placeBlock()}}});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('wheel',e=>{if(!locked)return;if(buildType){rotOff=(rotOff+(e.deltaY>0?1:3))%4}else{selSlot=(selSlot+(e.deltaY>0?1:PLACE.length-1))%PLACE.length;renderHotbar()}},{passive:true});
@@ -452,9 +452,16 @@ function computePlace(){place=null;if(!buildType)return;const h=raycast(8);if(!h
  const rot=(facing()+rotOff)%4,[rw,rd]=dims(def,rot);// Zielt man von oben auf ein Band, wird auf dessen Höhe gebaut (z. B. Brückenmitte genau über dem Band).
  const onBelt=h.id===BELT&&h.n[1]===1;const ax=onBelt?h.x:h.x+h.n[0],ay=onBelt?h.y:h.y+h.n[1],az=onBelt?h.z:h.z+h.n[2];
  const ox=ax-Math.floor(rw/2),oz=az-Math.floor(rd/2);place={ox,oy:ay,oz,rot,rw,rd,err:checkPlace(buildType,ox,ay,oz,rot)}}
-function tryPlace(){if(!place)return;if(place.err){toast(place.err);return}const def=BUILD[buildType];
- for(const k in def.cost)add(k,-def.cost[k]);createMachine(buildType,place.ox,place.oy,place.oz,place.rot);renderHotbar();
- if(!has(def.cost)&&buildType!=='belt')buildType=null}
+function tryPlace(rotOverride){if(!place)return null;if(place.err){toast(place.err);return null}const def=BUILD[buildType];
+ for(const k in def.cost)add(k,-def.cost[k]);const r=createMachine(buildType,place.ox,place.oy,place.oz,rotOverride??place.rot);renderHotbar();
+ if(!has(def.cost)&&buildType!=='belt')buildType=null;return r}
+// Shift + Ziehen: Bänder folgen der Zugrichtung; das vorige Band wird zum neuen hin ausgerichtet (Kurven).
+let lastBeltObj=null;
+function setBeltDir(b,d){b.dir=d;b.g.rotation.y=-d*Math.PI/2;slopesDirty=true}
+function dragBelt(){const k=place.ox+','+place.oy+','+place.oz;if(k===lastBelt||place.err)return;
+ let dir=null;const lb=lastBeltObj&&belts.get(idx(lastBeltObj.x,lastBeltObj.y,lastBeltObj.z))===lastBeltObj?lastBeltObj:null;
+ if(lb){const dx=place.ox-lb.x,dz=place.oz-lb.z,dy=place.oy-lb.y;if(Math.abs(dx)+Math.abs(dz)===1&&Math.abs(dy)<=1){dir=DIRS.findIndex(([a,b])=>a===dx&&b===dz);setBeltDir(lb,dir)}}
+ lastBelt=k;const b=tryPlace(dir??undefined);if(b)lastBeltObj=b}
 
 // ---------- Speichern / Laden ----------
 function save(){try{const data={seed,changes:[...changes],res:[...reserves],inv,tier,stats,goal,P:{x:P.x,y:P.y,z:P.z,yaw:P.yaw,pitch:P.pitch},
@@ -574,10 +581,10 @@ function frame(now){
  if(buildType&&place){if(ghostType!==buildType){if(ghost)scene.remove(ghost);ghost=model(buildType,true).g;scene.add(ghost);ghostType=buildType}
   ghost.visible=true;ghost.position.set(place.ox+place.rw/2,place.oy,place.oz+place.rd/2);ghost.rotation.y=-place.rot*Math.PI/2;
   ghostMat.color.set(place.err?0xef5a4c:0x5fcf6f);
-  if(buildType==='belt'&&mouseL){const k=place.ox+','+place.oy+','+place.oz;if(k!==lastBelt&&!place.err){lastBelt=k;tryPlace()}}}
+  if(buildType==='belt'&&mouseL&&(keys.ShiftLeft||keys.ShiftRight))dragBelt()}
  else if(ghost)ghost.visible=false;
  const md=$('mode');if(buildType){const d=BUILD[buildType];md.style.display='block';
-  md.innerHTML=`Baumodus: <b>${d.n}</b> (${d.w}×${d.d}) · LMB platzieren · R / Mausrad drehen · Rechtsklick abbrechen${place&&place.err?`<br><span style="color:#ff8a7e">${place.err}</span>`:''}`;info=''}
+  md.innerHTML=`Baumodus: <b>${d.n}</b> (${d.w}×${d.d}) · ${buildType==='belt'?'Klick: 1 Band · Shift + Ziehen: Linie':'LMB platzieren'} · R / Mausrad drehen · Rechtsklick abbrechen${place&&place.err?`<br><span style="color:#ff8a7e">${place.err}</span>`:''}`;info=''}
  else md.style.display='none';
  $('info').innerHTML=info;
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').style.opacity=0}

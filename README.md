@@ -19,6 +19,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 | Esc | Pause |
 | Q | Baumenü |
 | R / Mausrad | Bauvorschau drehen |
+| Shift + Ziehen | Förderbänder als Linie legen, jedes Band zeigt in Zugrichtung |
 | E | Maschine öffnen |
 | I | Inventar |
 
