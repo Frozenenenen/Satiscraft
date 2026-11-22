@@ -33,7 +33,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 - **Anschlüsse:** Grüne Pfeile sind Eingänge, orange Pfeile sind Ausgänge.
 - **Splitter und Merger:** Der Splitter (1 Eingang, 3 Ausgänge) verteilt reihum auf alle freien Ausgänge. Der Merger (3 Eingänge, 1 Ausgang) nimmt reihum von jedem Eingang. Beide kannst du direkt auf ein liegendes Band setzen: Das Band wird ersetzt, und die Laufrichtung wird übernommen.
 - **Bänder kreuzen:** Die Förderbandbrücke ist 3 Felder lang und überspannt 1 Feld, die lange Brücke ist 5 lang und überspannt 3. Unter dem Bogen kann ein anderes Band durchlaufen. Alternativ baust du die Brücke selbst aus Blöcken: Bänder steigen und fallen pro Feld um einen Block und werden dabei als Rampe dargestellt.
-- **Lager:** Die Lagerkiste (1×1, 999 Items) nimmt aus jeder Richtung an. Der Lagercontainer (2×2, 1.500 Items, 4 Eingänge) und das Industrielager (3×3, 5.000 Items, 5 Eingänge) nehmen nur an ihren markierten Eingängen an.
+- **Lager:** Die Lagerkiste (1×1, 999 Items) nimmt aus jeder Richtung an. Der Lagercontainer (2×2, 1.500 Items, 4 Eingänge) und das Industrielager (3×3, 5.000 Items, 5 Eingänge) nehmen nur an ihren markierten Eingängen an. Alle Lager sind auch Dispenser: Sie haben vorne Ausgänge (Kiste 1, Container 2, Industrielager 3). Im Lagerfenster stellst du die Ausgabe auf Aus, Alles oder ein bestimmtes Item.
 - **Meilensteine:** Oben links steht jeweils der nächste Schritt.
 - **Speichern:** Der Spielstand wird im `localStorage` des Browsers gespeichert.
 
