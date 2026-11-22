@@ -16,7 +16,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
 | Leertaste / Shift | Springen / rennen |
 | Linke Maus halten | Abbauen; bei Maschinen: abreißen (volle Rückerstattung) |
 | Rechtsklick (ohne Ziehen) | Block setzen (Auswahl mit 1–4); im Baumodus: abbrechen |
-| Esc | Pause |
+| Esc | Pause öffnen / schließen |
 | Q | Baumenü (Reiter: Abbau, Verarbeitung, Logistik, Lager, Werkstatt; wechseln mit 1–5) |
 | R / Mausrad | Bauvorschau drehen |
 | Shift + Ziehen | Förderbänder als Linie legen, jedes Band zeigt in Zugrichtung |

@@ -452,7 +452,9 @@ addEventListener('keydown',e=>{
  if(['Tab','Space'].includes(e.code))e.preventDefault();
  if(panel){if(panel.kind==='build'&&e.code.startsWith('Digit')){const i=+e.code.slice(5)-1;if(i>=0&&i<CATS.length){buildCat=i;try{localStorage.setItem('satiscraft-cat',String(i))}catch(e){}renderPanel()}return}
   if(['Escape','KeyE','KeyI','KeyQ','Tab'].includes(e.code))closePanel();return}
- if(!locked)return;if(e.code==='Escape')return pause();keys[e.code]=true;
+ if(e.code==='Escape'&&e.repeat)return;
+ if(!locked){if(e.code==='Escape'&&$('pause').classList.contains('on'))resume();return}
+ if(e.code==='Escape')return pause();keys[e.code]=true;
  if(e.code.startsWith('Digit')){const n=+e.code.slice(5)-1;if(n>=0&&n<PLACE.length){selSlot=n;renderHotbar()}}
  if(e.code==='KeyQ'){if(buildType){buildType=null}else openPanel('build')}
  if(e.code==='KeyI'||e.code==='Tab')openPanel('inv');
