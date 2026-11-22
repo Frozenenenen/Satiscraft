@@ -42,7 +42,7 @@ const GADGETS={radar:{n:'Erzradar',cost:{copper_bar:4,iron_bar:2},desc:'Zeigt Ri
 const PLACE=[['dirt',2],['stone',3],['sand',4],['wood',5],['planks',22],['glass',23],['concrete',24],['sandstone',13]];
 const BUILD={
  workbench:{n:'Werkbank',w:2,d:2,h:2,cost:{wood:8},ins:[],outs:[],desc:'Stellt Spitzhacken her. [E] zum Öffnen.'},
- chest:{n:'Lagerkiste',w:1,d:1,h:1,cost:{wood:6},ins:'all',outs:[[0,1,0]],store:999,desc:'Nimmt Items aus jeder Richtung auf, Ausgang vorne (Dispenser, im Fenster einschalten). Fasst 999 Items.'},
+ chest:{n:'Lagerkiste',w:1,d:1,h:1,cost:{wood:6},ins:'all',outs:[[0,1,0]],store:999,desc:'Nimmt Items aus jeder Richtung auf, Ausgang vorne (Dispenser, gibt standardmäßig alles aus, im Fenster einstellbar). Fasst 999 Items.'},
  container:{n:'Lagercontainer',w:2,d:2,h:2,cost:{wood:20,iron_bar:8},ins:[[0,-1,0],[1,-1,0],[-1,0,3],[2,0,1]],outs:[[0,2,0],[1,2,0]],store:1500,desc:'Großes Lager mit 4 Eingängen (hinten 2, seitlich je 1) und 2 Ausgängen vorne. Fasst 1.500 Items.'},
  warehouse:{n:'Industrielager',w:3,d:3,h:2,cost:{iron_plate:20,steel:5},ins:[[0,-1,0],[1,-1,0],[2,-1,0],[-1,1,3],[3,1,1]],outs:[[0,3,0],[1,3,0],[2,3,0]],store:5000,desc:'Sehr großes Lager mit 5 Eingängen (hinten 3, seitlich je 1) und 3 Ausgängen vorne. Fasst 5.000 Items.'},
  belt:{n:'Förderband',w:1,d:1,h:1,cost:{copper_bar:1},ins:[],outs:[],desc:'Klick setzt ein Band in Blickrichtung. Shift + Ziehen legt eine Linie, die der Zugrichtung folgt (auch Kurven). Stufen ±1 Block möglich.'},
@@ -410,7 +410,7 @@ function createMachine(type,ox,oy,oz,rot,data){
  if(type==='belt'){const b={x:ox,y:oy,z:oz,dir:rot,items:[],s:0};const g=new THREE.Group(),k=model('belt').g;g.add(k);b.k=k;g.position.set(ox+.5,oy,oz+.5);g.rotation.y=-rot*Math.PI/2;scene.add(g);b.g=g;
   belts.set(idx(ox,oy,oz),b);rawSet(ox,oy,oz,BELT);if(data)b.items=data.map((it,i)=>({item:it,p:Math.max(0,.9-i*SP)}));slopesDirty=true;if(net.role==='host')netEmit({t:'build',type,x:ox,y:oy,z:oz,r:rot});return b}
  const m={type,x:ox,y:oy,z:oz,rot,rw,rd,h:def.h,inBuf:{},outBuf:{},recipe:0,t:0,status:'',working:false,tr:[]};
- if(data){m.inBuf=data.i||{};m.outBuf=data.o||{};m.recipe=data.rc||0;m.disp=data.ds||null;if(data.nm)m.name=data.nm}
+ if(data){m.inBuf=data.i||{};m.outBuf=data.o||{};m.recipe=data.rc||0;m.disp=data.ds||null;if(data.nm)m.name=data.nm}else if(def.store)m.disp='all'
  if(def.beacon&&!m.name){let n=1;while(machines.some(q=>q.name==='Barke '+n))n++;m.name='Barke '+n}
  m.cells=cellsOf(def,ox,oy,oz,rot).map(c=>idx(c.x,c.y,c.z));
  for(const i of m.cells){setI(i,MACH);machineAt.set(i,m);markDirty(kX(i),kY(i),kZ(i))}
@@ -472,11 +472,14 @@ function minerArea(m,fn){const def=BUILD[m.type];for(let y=m.y-1;y>=Math.max(1,m
  const id=get(x,y,z);if(m.recipe===1?id===3:(BL[id]&&BL[id].ore&&BL[id].tier<=def.tier)){if(fn(x,y,z,id))return}}}
 const bridgePath=(def,f)=>[.27+1.25*Math.min(1,Math.sin(Math.PI*f)*1.6),-def.d/2+f*def.d];
 // Lager als Dispenser: gibt das gewählte Item (oder reihum alle) an freie Bänder an den Ausgängen ab.
-function dispense(m){m.working=false;if(!m.disp)return;
- for(const p of m.outs){const b=belts.get(idx(p.x,p.y,p.z));if(!b||b.dir===(p.dir+2)%4||!beltFree(b))continue;
+function dispense(m){m.working=false;if(!m.disp){m.status='Ausgabe aus – im Fenster [E] einschalten';return}
+ let nb=0,wrong=0,full=0,gave=false;
+ for(const p of m.outs){const b=belts.get(idx(p.x,p.y,p.z));if(!b){nb++;continue}if(b.dir===(p.dir+2)%4){wrong++;continue}if(!beltFree(b)){full++;continue}
   let it=null;if(m.disp==='all'){const ks=Object.keys(m.inBuf).filter(k=>m.inBuf[k]>0);if(ks.length){m.di=((m.di||0)+1)%ks.length;it=ks[m.di]}}
   else if((m.inBuf[m.disp]||0)>0)it=m.disp;
-  if(!it)return;m.inBuf[it]--;if(!m.inBuf[it])delete m.inBuf[it];b.items.push({item:it,p:0});m.working=true;m.pulse=Math.max(m.pulse||0,.35)}}
+  if(!it){m.status=m.disp==='all'?'Leer':'Kein '+ITEMS[m.disp][0]+' im Lager';return}gave=true;m.inBuf[it]--;if(!m.inBuf[it])delete m.inBuf[it];b.items.push({item:it,p:0});m.working=true;m.pulse=Math.max(m.pulse||0,.35)}
+ if(gave)m.status='Gibt aus…';else if(full)m.status='Band am Ausgang voll';else if(wrong)m.status='Band am Ausgang zeigt zum Lager – umdrehen';
+ else m.status='Kein Band am Ausgang (oranger Pfeil, auf Bodenhöhe des Lagers)'}
 function tickMachine(m,dt){
  const def=BUILD[m.type];
  if(def.miner&&net.role==='client')return; // Abbau läuft nur beim Host, Zustand kommt per Sync
@@ -570,7 +573,7 @@ function renderPanel(){
   else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>`}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>
    <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3><div class="recs">${[['off','Aus'],['all','Alles'],...[...new Set([...Object.keys(m.inBuf),...(m.disp&&m.disp!=='all'?[m.disp]:[])])].map(k=>[k,ITEMS[k][0]])].map(([k,n])=>`<button class="rec ${(m.disp||'off')===k?'on':''}" data-act="disp:${k}">${n}</button>`).join('')}</div>
-   <p class="mut">${m.disp?`Gibt ${m.disp==='all'?'alle Items reihum':ITEMS[m.disp][0]} an Bänder an den orangen Pfeilen ab.`:'Ausgabe ist aus. Wähle „Alles“ oder ein bestimmtes Item.'}</p>`}
+   <p><b>Status:</b> ${esc(m.status||'')}</p><p class="mut">${m.disp?`Gibt ${m.disp==='all'?'alle Items reihum':ITEMS[m.disp][0]} an Bänder an den orangen Pfeilen ab.`:'Ausgabe ist aus. Wähle „Alles“ oder ein bestimmtes Item.'}</p>`}
   else if(def.miner){let left=0,blocks=0;minerArea(m,(x,y,z)=>{const k=idx(x,y,z);left+=reserves.has(k)?reserves.get(k):RESERVE;blocks++});
    h+=`<h3>Abbauziel</h3><div class="recs">${['Erze','Stein'].map((n,i)=>`<button class="rec ${i===m.recipe?'on':''}" data-act="recipe:${i}">${n}</button>`).join('')}</div>
    <p>${m.status||'Startet…'}</p><p class="mut">Abbaubereich: ${m.rw+2}×${m.rd+2} Felder, bis 12 Blöcke tief. Verbleibend: <b style="color:var(--ink)">${left}</b> Einheiten in ${blocks} ${m.recipe===1?'Steinblöcken':'Erzblöcken'}.</p>
