@@ -25,7 +25,9 @@ const TOOLREC=[null,{wood:5},{stone:8,wood:2},{iron_bar:6,wood:2},{steel:6,rod:3
 const PLACE=[['dirt',2],['stone',3],['sand',4],['wood',5]];
 const BUILD={
  workbench:{n:'Werkbank',w:2,d:2,h:2,cost:{wood:8},ins:[],outs:[],desc:'Stellt Spitzhacken her. [E] zum Öffnen.'},
- chest:{n:'Lagerkiste',w:1,d:1,h:1,cost:{wood:6},ins:'all',outs:[],desc:'Nimmt Items von Bändern aus jeder Richtung auf.'},
+ chest:{n:'Lagerkiste',w:1,d:1,h:1,cost:{wood:6},ins:'all',outs:[],store:999,desc:'Nimmt Items von Bändern aus jeder Richtung auf. Fasst 999 Items.'},
+ container:{n:'Lagercontainer',w:2,d:2,h:2,cost:{wood:20,iron_bar:8},ins:[[0,-1,0],[1,-1,0],[-1,0,3],[2,0,1]],outs:[],store:1500,desc:'Großes Lager mit 4 Eingängen (hinten 2, seitlich je 1). Fasst 1.500 Items.'},
+ warehouse:{n:'Industrielager',w:3,d:3,h:2,cost:{iron_plate:20,steel:5},ins:[[0,-1,0],[1,-1,0],[2,-1,0],[-1,1,3],[3,1,1]],outs:[],store:5000,desc:'Sehr großes Lager mit 5 Eingängen (hinten 3, seitlich je 1). Fasst 5.000 Items.'},
  belt:{n:'Förderband',w:1,d:1,h:1,cost:{copper_bar:1},ins:[],outs:[],desc:'Läuft in Blickrichtung. LMB halten zum Ziehen. Stufen ±1 Block möglich.'},
  smelter:{n:'Schmelzofen',w:2,d:2,h:2,cost:{stone:20,coal:5},ins:[[0,-1,0]],outs:[[1,2,0]],auto:1,desc:'Erz → Barren. Wählt das Rezept automatisch.'},
  miner1:{n:'Miner Mk1',w:2,d:2,h:3,cost:{iron_bar:10,stone:15},ins:[],outs:[[0,2,0]],miner:1,tier:2,period:2.4,desc:'Auf Erzvorkommen setzen. Fördert Kohle, Kupfer, Eisen.'},
@@ -214,6 +216,13 @@ function model(type,ghost){
   bx(g,C(0x5e656d),.55,.28,.32,.45,.94,-.45);bx(g,C(0x34383d),.5,.22,.3,-.4,.94,.35);bx(g,C(0xc9ced4),.7,.04,.12,.1,.94,.2);bx(g,C(0x6e4a28),1.7,.08,1.7,0,.25,0);
   const hm=new THREE.Group();hm.position.set(-.05,1.0,.35);bx(hm,C(0x7a5232),.06,.06,.5,0,0,.2);bx(hm,C(0x4a4f55),.12,.12,.22,0,-.03,.45).rotation.y=Math.PI/2;g.add(hm);a.hammer=hm;
   a.emit.push({p:[-.4,1.2,.35],k:'spark'})}
+ if(type==='container'){bx(g,C(0x3b3f44),1.95,.15,1.95,0,0,0);bx(g,C(0x8b5a2b),1.8,1.05,1.8,0,.15,0);
+  for(const sx of[-.86,.86])for(const sz of[-.86,.86])bx(g,C(0x5e656d),.12,1.1,.12,sx,.15,sz);bx(g,C(0x6b4220),1.82,.08,1.82,0,.7,0);
+  const lid=new THREE.Group();lid.position.set(0,1.2,-.9);bx(lid,C(0x5e656d),1.86,.14,1.86,0,0,.9);bx(lid,C(0xe8892b),.5,.06,.5,0,.14,.9);g.add(lid);a.lid=lid;a.lamp=.25}
+ if(type==='warehouse'){bx(g,C(0x3b3f44),2.95,.15,2.95,0,0,0);bx(g,C(0x6f7a84),2.8,1.4,2.8,0,.15,0);
+  for(let i=-1.2;i<=1.21;i+=.3){bx(g,C(0x5a646d),.08,1.4,.05,i,.15,1.41);bx(g,C(0x5a646d),.08,1.4,.05,i,.15,-1.41)}
+  bx(g,C(0xe8892b),2.82,.12,2.82,0,1.2,0);bx(g,C(0x23272c),1,1,.06,0,.15,1.43);
+  const lid=new THREE.Group();lid.position.set(0,1.55,-1.4);bx(lid,C(0x4d565e),2.86,.14,2.86,0,0,1.4);bx(lid,C(0xffd24a),.9,.05,.9,0,.14,1.4);g.add(lid);a.lid=lid;a.lamp=.18}
  if(type==='chest'){bx(g,C(0x8b5a2b),.86,.6,.86,0,0,0);const lid=new THREE.Group();lid.position.set(0,.6,-.45);bx(lid,C(0x6b4220),.9,.2,.9,0,0,.45);bx(lid,C(0xd8b04a),.16,.18,.04,0,-.1,.9);g.add(lid);a.lid=lid}
  if(type==='smelter'){bx(g,C(0x3b3f44),1.95,.25,1.95,0,0,0);bx(g,C(0x8c8f93),1.7,1.25,1.7,0,.25,0);a.glow=bx(g,GL(0xff7a1a),.8,.45,.06,0,.45,.86);
   bx(g,C(0x5d6166),1.8,.15,1.8,0,1.5,0);bx(g,C(0x55595e),.42,1,.42,-.5,1.65,-.5);bx(g,C(0x55595e),.5,.3,.3,-.5,.3,-.95);a.emit.push({p:[-.5,2.7,-.5],k:'smoke'})}
@@ -266,7 +275,7 @@ function removeBuilding(t){
 const beltFree=b=>!b.items.length||(b.items.length<4&&b.items[b.items.length-1].p>=SP);
 function machineAccept(m,item){
  const def=BUILD[m.type];
- if(m.type==='chest'){if(tot(m.inBuf)>=999)return false;m.inBuf[item]=(m.inBuf[item]||0)+1;m.pulse=.35;return true}
+ if(def.store){if(tot(m.inBuf)>=def.store)return false;m.inBuf[item]=(m.inBuf[item]||0)+1;m.pulse=.35;return true}
  const rs=RECIPES[m.type];if(!rs)return false;let r=rs[m.recipe];
  if(r.in[item]===undefined){if(!def.auto||tot(m.inBuf))return false;const j=rs.findIndex(q=>q.in[item]!==undefined);if(j<0)return false;m.recipe=j;m.t=0;r=rs[j]}
  if((m.inBuf[item]||0)>=MAXIN)return false;m.inBuf[item]=(m.inBuf[item]||0)+1;return true}
@@ -275,7 +284,7 @@ function transfer(b,item){
  for(const dy of[0,1,-1]){const nb=belts.get(idx(tx,b.y+dy,tz));if(tx<0||tz<0||tx>=W||tz>=D)return false;
   if(nb){if(nb.dir===(b.dir+2)%4)return false;if(beltFree(nb)){nb.items.push({item,p:0});return true}return false}}
  const m=machineAt.get(idx(tx,b.y,tz));if(!m)return false;
- if(m.type==='chest'||m.ins.some(p=>p.x===b.x&&p.y===b.y&&p.z===b.z&&p.dir===b.dir)){if(machineAccept(m,item)){stats.delivered++;return true}}
+ if(BUILD[m.type].ins==='all'||m.ins.some(p=>p.x===b.x&&p.y===b.y&&p.z===b.z&&p.dir===b.dir)){if(machineAccept(m,item)){stats.delivered++;return true}}
  return false}
 function updateBelts(dt){for(const b of belts.values()){const its=b.items;
  for(let i=0;i<its.length;i++){const lim=i===0?1:its[i-1].p-SP;its[i].p=Math.max(its[i].p,Math.min(its[i].p+BS*dt,lim))}
@@ -354,7 +363,7 @@ function renderPanel(){
    `<h3>Abbaubarkeit</h3><p class="mut">Hand: Erde, Sand, Holz · Holzspitzhacke: Stein, Kohle · Steinspitzhacke: Kupfer, Eisen · Eisenspitzhacke: Gold · Stahlspitzhacke: Titan</p>`}
  else{const m=panel.m,def=BUILD[m.type];h=`<h2>${def.n} ${x}</h2>`;
   if(m.type==='workbench'){h+=`<p>Aktuell: <b>${TOOLS[tier].n}</b></p>`+[1,2,3,4].map(t=>`<div class="row"><div><b>${TOOLS[t].n}</b>${costHtml(TOOLREC[t])}</div><button class="b" data-act="craft:${t}" ${tier>=t||!has(TOOLREC[t])||t>tier+1?'disabled':''}>${tier>=t?'Vorhanden':'Herstellen'}</button></div>`).join('')}
-  else if(m.type==='chest'){h+=`<h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>`}
+  else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>`}
   else if(def.miner){let left=0,blocks=0;minerArea(m,(x,y,z)=>{const k=idx(x,y,z);left+=reserves.has(k)?reserves.get(k):RESERVE;blocks++});
    h+=`<p>${m.status||'Startet…'}</p><p class="mut">Abbaubereich: ${m.rw+2}×${m.rd+2} Felder, bis 12 Blöcke tief. Verbleibend: <b style="color:var(--ink)">${left}</b> Einheiten in ${blocks} Erzblöcken.</p>
     <div class="prog"><i style="width:${Math.min(100,m.t/def.period*100)}%"></i></div><h3>Ausgang</h3>${bufRows(m.outBuf,'take','Entnehmen')}`}
@@ -441,7 +450,7 @@ function sanitize(d){
  for(const[k,a,b]of[['x',.4,W-.4],['y',-5,H+5],['z',.4,D-.4],['yaw',-1e6,1e6],['pitch',-1.55,1.55]])if(isNum(p[k],a,b))o.P[k]=p[k];
  for(const m of arr(d.machines)){if(!m||typeof m!=='object'||!own(BUILD,m.t)||m.t==='belt')continue;
   if(!isInt(m.x,0,W-1)||!isInt(m.y,1,H-1)||!isInt(m.z,0,D-1)||!isInt(m.r,0,3))continue;
-  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:0})}
+  const rs=RECIPES[m.t];o.machines.push({t:m.t,x:m.x,y:m.y,z:m.z,r:m.r,i:cleanBag(m.i,BUILD[m.t].store||999),o:cleanBag(m.o,999),rc:rs&&isInt(m.rc,0,rs.length-1)?m.rc:0})}
  for(const b of arr(d.belts)){if(!Array.isArray(b)||!isInt(b[0],0,W-1)||!isInt(b[1],1,H-1)||!isInt(b[2],0,D-1)||!isInt(b[3],0,3))continue;
   o.belts.push([b[0],b[1],b[2],b[3],arr(b[4]).filter(k=>typeof k==='string'&&own(ITEMS,k)).slice(0,4)])}
  return o}
@@ -492,7 +501,7 @@ function frame(now){
  camera.position.set(P.x,P.y+1.62,P.z);camera.rotation.y=P.yaw;camera.rotation.x=P.pitch;
  for(const m of machines)tickMachine(m,dt);updateBelts(dt);drawItems();beltTex.offset.y=(beltTex.offset.y+BS*dt)%1;
  for(const m of machines){const a=m.a;if(m.pulse>0)m.pulse=Math.max(0,m.pulse-dt);
-  if(a.lid)a.lid.rotation.x=-Math.sin(m.pulse/.35*Math.PI)*.55;
+  if(a.lid)a.lid.rotation.x=-Math.sin(m.pulse/.35*Math.PI)*(a.lamp||.55);
   if(a.hammer)a.hammer.rotation.x=m.pulse>0?-Math.abs(Math.sin(m.pulse*11))*1.1:0;
   const on=m.working||m.pulse>0;
   if(a.glow){const tgt=m.working?.75+Math.sin(time*9+m.x)*.2+Math.sin(time*23)*.08:.2;a.glow.material.emissiveIntensity+=(tgt-a.glow.material.emissiveIntensity)*Math.min(1,dt*4)}
