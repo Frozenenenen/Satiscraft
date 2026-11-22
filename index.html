@@ -29,7 +29,16 @@ canvas{display:block;cursor:crosshair}canvas.drag{cursor:grabbing}
 #bar i{display:block;height:100%;background:var(--acc);width:0}
 #goal{left:14px;top:14px;max-width:360px;background:#16191dd9;border-left:4px solid var(--acc);padding:10px 14px;border-radius:4px}
 #goal b{color:var(--acc);display:block;font-size:13px}
-#mode{left:50%;top:14px;transform:translateX(-50%);background:#16191de6;padding:8px 16px;border-radius:4px;display:none;text-align:center}
+#compass{left:50%;top:6px;transform:translateX(-50%);width:min(560px,52vw);height:58px;background:linear-gradient(90deg,transparent,#16191dd9 14%,#16191dd9 86%,transparent);border-radius:4px}
+#cstrip{position:absolute;inset:0;overflow:hidden}
+#compass .cc{position:absolute;left:50%;top:0;width:2px;height:12px;margin-left:-1px;background:var(--acc)}
+.ct{position:absolute;top:4px;transform:translateX(-50%);font-size:11px;color:#7d858e;line-height:1}
+.ct.big{font-size:15px;font-weight:700;color:#eef0f2;top:2px}.ct.n{color:#ef5a4c}
+.cm{position:absolute;top:20px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;font-size:12px;line-height:1.1;white-space:nowrap;text-shadow:0 1px 2px #000}
+.cm b{font-size:11px}.cm i{font-style:normal;font-size:10px;color:#cfd5db}
+.cm.base{color:#f29a2e}.cm.bk{color:#4fe3ff}.cm.edge{opacity:.85}
+@media(max-width:1300px){#goal{top:72px}#coophud{top:72px}#radar{top:116px}}
+#mode{left:50%;top:70px;transform:translateX(-50%);background:#16191de6;padding:8px 16px;border-radius:4px;display:none;text-align:center}
 #mode b{color:var(--acc)}
 #bottom{left:50%;bottom:12px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px}
 #hotbar{display:flex;gap:6px}
@@ -97,6 +106,7 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="info" class="hud"></div>
 <div id="bar" class="hud"><i></i></div>
 <div id="goal" class="hud"></div>
+<div id="compass" class="hud"><div id="cstrip"></div><i class="cc"></i></div>
 <div id="mode" class="hud"></div>
 <div id="toast" class="hud"></div>
 <div id="coophud" class="hud"></div>
@@ -145,6 +155,6 @@ table.k{border-collapse:collapse;font-size:14px}table.k td{padding:3px 14px 3px 
 <div id="panel" class="ov"><div class="card" id="pc"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script src="game.js?v=33"></script>
+<script src="game.js?v=34"></script>
 </body>
 </html>
