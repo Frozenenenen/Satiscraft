@@ -54,6 +54,7 @@ Ein 3D-Browserspiel, das Minecraft und Satisfactory mischt: Du baust eine Blockw
   - Mit jeder Welle kommen mehr Gegner, und sie halten mehr aus.
   - Läufer greifen ab Welle 1 an, Brocken ab Welle 3, Flitzer ab Welle 5.
   - 30 s vor einer Welle erscheint rechts ein großer Countdown, in den letzten 10 s pulsiert er.
+  - Am Turm (E) startest du die nächste Welle auf Knopfdruck sofort, solange keine läuft.
 - **Verteidigung** (Baumenü → Verteidigung):
   - Die Balliste braucht keine Munition.
   - Der Geschützturm braucht Munition. Der Konstruktor macht aus 1 Eisenstange 6 Munition, du lieferst sie per Band oder legst sie mit E ein.

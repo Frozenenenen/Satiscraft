@@ -582,7 +582,7 @@ function renderPanel(){
   else if(def.beacon){h+=`<p class="mut">Wegpunkt im Kompass. Gib der Barke einen Namen, um sie von anderen zu unterscheiden.</p>
    <div class="crow"><input id="bname" maxlength="24" value="${esc(m.name)}" aria-label="Name der Barke" autocomplete="off"><button class="b" data-act="rename">Umbenennen</button></div>
    <p class="mut">Position: ${m.x}, ${m.y}, ${m.z}</p>`}
-  else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>`}
+  else if(def.fixed){const dd=Math.round(Math.hypot(m.x+1.5-P.x,m.z+1.5-P.z));h+=`<p>Deine Basis. Sie steht seit Spielbeginn und kann nicht abgerissen werden.</p><p>Lebenspunkte: <b>${Math.max(0,Math.round(td.hp))}</b> / ${TOWER_HP} · Welle ${td.wave} · Besiegte Gegner ${td.kills}${td.defeats?' · gefallen: '+td.defeats+'×':''}</p><p class="mut">Position: ${m.x+1}, ${m.y}, ${m.z+1} · Entfernung ${dd} m</p>${td.path?(waveActive()?`<p><b>Welle ${td.wave} läuft</b> – noch ${enemies.length+spawnQ.length} Gegner.</p>`:`<div class="btns"><button class="b danger" data-act="wave">Welle ${td.wave+1} jetzt starten</button></div><p class="mut">Startet sofort. Der normale Zeitplan läuft weiter, die Welle danach wird stärker.</p>`):''}`}
   else if(def.store){const n=tot(m.inBuf);h+=`<p>Belegt: <b>${n}</b> / ${def.store} Items</p><div class="prog"><i style="width:${Math.min(100,n/def.store*100)}%"></i></div><h3>Inhalt</h3>${bufRows(m.inBuf,'takec','Nehmen')}<div class="btns"><button class="b" data-act="takeall">Alles nehmen</button></div>
    <h3>Ausgabe (Dispenser) – ${m.outs.length} Ausgang${m.outs.length>1?'e':''} vorne</h3>${m.outs.length>1?'<p class="mut">Links/rechts gesehen, wenn du vor den orangen Pfeilen stehst und auf das Lager schaust. „Alles“ gibt alles aus, was kein anderer Ausgang ausgibt.</p>':''}
    ${m.outs.map((p,i)=>{const cur=m.disp[i]||'off';const opts=[['off','Aus'],['all','Alles'],...[...new Set([...Object.keys(m.inBuf),...(m.disp[i]&&m.disp[i]!=='all'?[m.disp[i]]:[])])].map(k=>[k,ITEMS[k][0]])];
@@ -610,8 +610,9 @@ $('pc').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!
  if(act==='build'){buildType=arg;rotOff=0;closePanel();return}
  if(m&&PANEL_ACTS.includes(act)){if(net.role==='client')netSend({t:'act',a:'panel',k:m.cells[0],act,arg});else panelAct(m,act,arg)}
  renderPanel();renderHotbar()});
-const PANEL_ACTS=['rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
+const PANEL_ACTS=['wave','rename','gadget','craft','recipe','put','take','takec','takeall','purge','disp'];
 function panelAct(m,act,arg){
+ if(act==='wave'){if(BUILD[m.type].fixed&&td.path&&!waveActive())startWave();return}
  if(act==='craft'){const t=+arg;if(m.type==='workbench'&&TOOLREC[t]&&has(TOOLREC[t])&&tier===t-1){for(const k in TOOLREC[t])add(k,-TOOLREC[t][k]);tier=t;m.pulse=1.4;toast(TOOLS[t].n+' hergestellt')}}
  if(act==='recipe'){const i=+arg,n=BUILD[m.type].miner?2:RECIPES[m.type]?RECIPES[m.type].length:0;if(isInt(i,0,n-1)&&i!==m.recipe){for(const k in m.inBuf)add(k,m.inBuf[k]);m.inBuf={};m.recipe=i;m.t=0}}
  if(act==='rename'){if(BUILD[m.type].beacon&&typeof arg==='string'){m.name=cleanName(arg);toast('Barke heißt jetzt „'+m.name+'“')}return}
@@ -847,6 +848,7 @@ function updateWaveTimer(dt){const el=$('wavetimer');let html='',cls='';
   html=`<small>Angriff in</small><b>0:${String(s).padStart(2,'0')}</b><small>Welle ${td.wave+1}</small>`;cls=s<=10?'on hot':'on';waveAlarm=0}
  else if(waveAlarm>0){waveAlarm-=dt;html=`<b>Angriff!</b><small>Welle ${td.wave}</small>`;cls='on hot'}
  const key=cls+html;if(key!==wtLast){wtLast=key;el.innerHTML=html;el.className=cls}}
+const waveActive=()=>enemies.length>0||spawnQ.length>0;
 function startWave(){waveAlarm=4;td.wave++;spawnQ=waveList(td.wave).map((ty,i)=>({ty,t:i*1.6}));waveT=0;toast('Angriff! Welle '+td.wave+' – '+spawnQ.length+' Gegner')}
 function baseFallen(){for(const e of[...enemies])removeEnemy(e,true);spawnQ=[];td.hp=TOWER_HP/2;td.defeats++;toast('Die Basis ist gefallen! Der Turm steht wieder mit halber Kraft.')}
 function damageEnemy(e,d){e.hp-=d;if(e.pos)emit(new THREE.Vector3(e.pos.x,e.pos.y+.8,e.pos.z),'spark');
@@ -1180,7 +1182,7 @@ function applySync(d){applyTdSync(d.td);inv=cleanBag(d.inv,1e9);gadgets={radar:!
  for(const r of arr(d.b)){if(!Array.isArray(r)||!isKey(r[0]))continue;const b=belts.get(r[0]);if(!b)continue;
   b.items=arr(r[1]).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&own(ITEMS,x[0])&&isNum(x[1],0,1)).slice(0,4).map(x=>({item:x[0],p:x[1]}))}
  renderHotbar()}
-function applyTdSync(t){if(!t||typeof t!=='object')return;if(isInt(t.day,1,1e7))td.day=t.day;if(isNum(t.t,0,.9999))td.t=t.t;if(isInt(t.wave,0,1e6))td.wave=t.wave;if(isNum(t.hp,0,TOWER_HP))td.hp=t.hp;
+function applyTdSync(t){if(!t||typeof t!=='object')return;if(isInt(t.day,1,1e7))td.day=t.day;if(isNum(t.t,0,.9999))td.t=t.t;if(isInt(t.wave,0,1e6)){if(t.wave>td.wave&&td.wave>0||t.wave===td.wave+1)waveAlarm=4;td.wave=t.wave}if(isNum(t.hp,0,TOWER_HP))td.hp=t.hp;
  if(WAVE_OPTS.includes(t.every))td.every=t.every;if(isInt(t.kills,0,1e9))td.kills=t.kills;if(isInt(t.defeats,0,1e7))td.defeats=t.defeats;if(!td.path)return;
  const seen=new Set();for(const r of arr(t.en).slice(0,300)){if(!Array.isArray(r)||!isInt(r[0],1,1e9)||!own(ETYPES,r[1])||!isNum(r[2],0,400)||!isNum(r[3],0,1e7)||!isNum(r[4],1,1e7))continue;seen.add(r[0]);
   let e=enemies.find(q=>q.id===r[0]);if(!e)e=spawnEnemy(r[1],r[4],r[0],Math.min(r[2],route.length-1));if(Math.abs(e.s-r[2])>1.5)e.s=Math.min(r[2],route.length-1);e.hp=r[3];e.max=r[4]}
