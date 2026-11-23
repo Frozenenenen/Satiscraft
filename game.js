@@ -633,7 +633,7 @@ const $=id=>document.getElementById(id);
 let panel=null,locked=false,buildType=null,rotOff=0,ghost=null,ghostType=null,selSlot=0,toastT=0,mineT=0,mineKey='',lastBelt='';
 function toast(s){const t=$('toast');t.textContent=s;t.style.opacity=1;toastT=2.2}
 function showPause(resume){try{renderSettings()}catch(e){}$('pause').classList.add('on');$('ptext').textContent=resume?'Pausiert. Klicke auf „Spielen“, um weiterzumachen.':$('ptext').textContent;$('play').textContent=resume?'Weiterspielen':'Spielen'}
-function releaseMouse(){mouseL=false;mouseR=false;canvas.classList.remove('drag');for(const k in keys)keys[k]=false}
+function releaseMouse(){mouseL=false;mouseR=false;if(document.pointerLockElement)try{document.exitPointerLock()}catch(e){}canvas.classList.remove('drag');for(const k in keys)keys[k]=false}
 function resume(){$('pause').classList.remove('on');locked=true}
 function pause(){locked=false;releaseMouse();showPause(true)}
 $('play').onclick=()=>resume();
@@ -740,13 +740,17 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',releaseMouse);
 // Kamera dreht nur bei gedrückter rechter Maustaste; ein kurzer Rechtsklick ohne Ziehen setzt einen Block bzw. bricht den Baumodus ab.
-document.addEventListener('mousemove',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;
- if(!locked||!mouseR)return;dragDist+=Math.abs(e.movementX)+Math.abs(e.movementY);
- if(dragDist>4)canvas.classList.add('drag');P.yaw-=e.movementX*.004;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-e.movementY*.004))});
+// Stößt der Mauszeiger beim Drehen an den Rand, wird er kurz gefangen (Pointer Lock), damit man weiterdrehen kann; beim Loslassen ist er wieder frei.
+const plocked=()=>document.pointerLockElement===canvas;
+document.addEventListener('mousemove',e=>{if(!plocked()){mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1}
+ if(!locked||!mouseR)return;const mx=Math.max(-150,Math.min(150,e.movementX)),my=Math.max(-150,Math.min(150,e.movementY));dragDist+=Math.abs(mx)+Math.abs(my);
+ if(!plocked()&&canvas.requestPointerLock&&(e.clientX<24||e.clientY<24||e.clientX>innerWidth-24||e.clientY>innerHeight-24)){try{const p=canvas.requestPointerLock();if(p&&p.catch)p.catch(()=>{})}catch(err){}}
+ if(dragDist>4)canvas.classList.add('drag');P.yaw-=mx*.004;P.pitch=Math.max(-1.55,Math.min(1.55,P.pitch-my*.004))});
 canvas.addEventListener('mousedown',e=>{if(!locked)return;
  if(e.button===0){mouseL=true;if(buildType){const ok=place&&!place.err;const pos=place&&{x:place.ox,y:place.oy,z:place.oz};tryPlace();if(buildType==='belt'){lastBeltPos=ok?pos:null;lastBelt=place?place.ox+','+place.oy+','+place.oz:''}}}
  if(e.button===2){mouseR=true;dragDist=0}});
 document.addEventListener('mouseup',e=>{if(e.button===0){mouseL=false;lastBelt='';lastBeltPos=null}
+ if(e.button===2&&plocked())document.exitPointerLock();
  if(e.button===2&&mouseR){mouseR=false;canvas.classList.remove('drag');if(locked&&dragDist<=4){if(buildType)buildType=null;else{placeBlock();vmPunch=.3}}}});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('wheel',e=>{if(!locked)return;if(buildType){rotOff=(rotOff+(e.deltaY>0?1:3))%4}else{selSlot=(selSlot+(e.deltaY>0?1:PLACE.length-1))%PLACE.length;renderHotbar()}},{passive:true});
